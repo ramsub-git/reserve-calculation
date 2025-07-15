@@ -1,70 +1,119 @@
 package com.sephora.ism.reserve;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
-
+import java.math.BigDecimal;
 
 public class ReserveCalculationEngine {
     private static final Logger LOGGER = Logger.getLogger(ReserveCalculationEngine.class.getName());
 
-    private final List<ReserveCalcStep> steps = new ArrayList<>();
-    private CalculationFlow primaryFlow = CalculationFlow.OMS;
+    private final Map<CalculationFlow, List<ReserveCalcStep>> flowSteps = new LinkedHashMap<>();
+    private final Map<String, ReserveCalcStep> contextConditionSteps = new LinkedHashMap<>();
 
     public void addStep(
-        ReserveCalcStep step, 
-        java.util.Map<CalculationFlow, ReserveCalcStep> flowSteps
+            ReserveCalcStep mainStep,
+            Map<CalculationFlow, ReserveCalcStep> alternateSteps,
+            ReserveCalcStep contextConditionStep
     ) {
-        steps.add(step);
-        step.setCalculationFlows(flowSteps);
+        // Add main step to primary flow
+        flowSteps.computeIfAbsent(CalculationFlow.OMS, k -> new ArrayList<>()).add(mainStep);
+
+        // Add alternate steps to their respective flows
+        alternateSteps.forEach((flow, step) -> {
+            flowSteps.computeIfAbsent(flow, k -> new ArrayList<>()).add(step);
+        });
+
+        // Store context condition step
+        contextConditionSteps.put(mainStep.getFieldName(), contextConditionStep);
     }
 
-    public void setPrimaryFlow(CalculationFlow flow) {
-        this.primaryFlow = flow;
-    }
+    public void calculate(ReserveCalcContext context) {
+        // Determine the maximum number of steps across all flows
+        int maxSteps = flowSteps.values().stream()
+                .mapToInt(List::size)
+                .max()
+                .orElse(0);
 
-    public void calculate(ReserveCalcContext context, ReserveCalcModifierSet modifierSet) {
-        LOGGER.info("Starting reserve calculation");
-        
-        for (ReserveCalcStep step : steps) {
-            step.calculateValue(context, modifierSet);
+        // Iterate through steps by index
+        for (int stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
+            // Collect steps at this index from all flows
+            List<ReserveCalcStep> currentSteps = new ArrayList<>();
+            for (CalculationFlow flow : flowSteps.keySet()) {
+                List<ReserveCalcStep> flowStepList = flowSteps.get(flow);
+                if (stepIndex < flowStepList.size()) {
+                    currentSteps.add(flowStepList.get(stepIndex));
+                }
+            }
+
+            // Calculate current steps across flows
+            context.calculateSteps(
+                    currentSteps,
+                    contextConditionSteps.get(currentSteps.get(0).getFieldName())
+            );
         }
-        
-        context.logContextState();
-        LOGGER.info("Reserve calculation completed");
     }
 
     public static ReserveCalculationEngine setupEngine() {
         ReserveCalculationEngine engine = new ReserveCalculationEngine();
 
-        // Existing Skuloc Field Steps (keep as before)
-//        engine.addStep(new SkulocFieldStep("onHand", skulocRecord.getSsohu()), Map.of());
-//        engine.addStep(new SkulocFieldStep("rohm", skulocRecord.getSsrohm()), Map.of());
-//        engine.addStep(new SkulocFieldStep("lost", skulocRecord.getSslost()), Map.of());
-//        engine.addStep(new SkulocFieldStep("damaged", skulocRecord.getSsdmg()), Map.of());
-//        engine.addStep(new SkulocFieldStep("dotShipNotBill", skulocRecord.getDotShipNotBill()), Map.of());
-//        engine.addStep(new SkulocFieldStep("retPickReserve", skulocRecord.getSsrohp()), Map.of());
-//        engine.addStep(new SkulocFieldStep("dotOpenCustOrder", skulocRecord.getDotOpenCustOrder()), Map.of());
-//
-//        // Additional fields from PDF
-//        engine.addStep(new SkulocFieldStep("dotHardReserveAtsYes", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("dotHardReserveAtsNo", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("retHardReserveAtsYes", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("retHardReserveAtsNo", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("heldHardReserve", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("dotReserve", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("retReserve", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("dotOutb", BigDecimal.ZERO), Map.of());
-//        engine.addStep(new SkulocFieldStep("retNeed", BigDecimal.ZERO), Map.of());
-
+        // Skuloc Field Steps
+        // Skuloc Field Steps
+        engine.addStep(
+                new SkulocFieldStep("onHand"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("rohm"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("lost"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("damaged"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("retPickReserve"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("dotPickReserve"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("dotShipNotBill"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("dotOpenCustOrder"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("retHardReserveAtsYes"),
+                Map.of(),
+                null
+        );
+        engine.addStep(
+                new SkulocFieldStep("dotHardReserveAtsYes"),
+                Map.of(),
+                null
+        );
         // Initial AFS Calculation
         engine.addStep(
                 new CalculationStep(
                         "initialAfs",
                         List.of("onHand", "rohm", "lost", "damaged"),
-                        (inputs, modifierSet) -> inputs.get("onHand")
+                        (inputs) -> inputs.get("onHand")
                                 .subtract(inputs.get("rohm"))
                                 .subtract(inputs.get("lost"))
                                 .subtract(inputs.get("damaged"))
@@ -73,131 +122,61 @@ public class ReserveCalculationEngine {
                         CalculationFlow.JEI, new CalculationStep(
                                 "initialAfsJei",
                                 List.of("onHand", "lost"),
-                                (inputs, modifierSet) -> inputs.get("onHand").subtract(inputs.get("lost"))
+                                (inputs) -> inputs.get("onHand").subtract(inputs.get("lost"))
                         )
-                )
-        );
-
-        // 2. Uncommitted Inventory Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "uncommittedInventory",
-                        List.of("initialAfs", "dotShipNotBill", "retPickReserve", "dotOpenCustOrder"),
-                        (inputs, modifierSet) -> inputs.get("initialAfs")
-                                .subtract(inputs.get("dotShipNotBill"))
-                                .subtract(inputs.get("retPickReserve"))
-                                .subtract(inputs.get("dotOpenCustOrder"))
                 ),
-                Map.of(
-                        CalculationFlow.JEI, new CalculationStep(
-                                "uncommittedInventoryJei",
-                                List.of("initialAfs"),
-                                (inputs, modifierSet) -> inputs.get("initialAfs")
-                        )
-                )
-        );
+                new ContextConditionStep(
+                        "initialAfsContextCondition",
+                        List.of("flowValues"),
+                        (inputs) -> {
+                            // Debug print to understand input
+                            System.out.println("Inputs: " + inputs);
 
-        // 3. Retail ATS Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "retailAts",
-                        List.of("retHardReserveAtsYes", "retReserve", "retNeed"),
-                        (inputs, modifierSet) -> inputs.get("retHardReserveAtsYes")
-                                .add(inputs.get("retReserve"))
-                                .add(inputs.get("retNeed"))
-                ),
-                Map.of(
-                        CalculationFlow.JEI, new CalculationStep(
-                                "retailAtsJei",
-                                List.of("retHardReserveAtsYes"),
-                                (inputs, modifierSet) -> inputs.get("retHardReserveAtsYes")
-                        )
-                )
-        );
+                            // Check if flowValues exists and is a Map
+                            Object flowValuesObj = inputs.get("flowValues");
+                            if (!(flowValuesObj instanceof Map)) {
+                                System.out.println("FlowValues is not a Map: " + flowValuesObj);
+                                return BigDecimal.ZERO;
+                            }
 
-        // 4. Dotcom ATS Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "dotAts",
-                        List.of("dotHardReserveAtsYes", "dotReserve", "dotOutb"),
-                        (inputs, modifierSet) -> inputs.get("dotHardReserveAtsYes")
-                                .add(inputs.get("dotReserve"))
-                                .add(inputs.get("dotOutb"))
-                ),
-                Map.of(
-                        CalculationFlow.JEI, new CalculationStep(
-                                "dotAtsJei",
-                                List.of("dotHardReserveAtsYes"),
-                                (inputs, modifierSet) -> inputs.get("dotHardReserveAtsYes")
-                        )
-                )
-        );
+                            Map<String, BigDecimal> flowValues = (Map<String, BigDecimal>) flowValuesObj;
 
-        // 5. Committed Inventory Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "committedInventory",
-                        List.of("dotShipNotBill", "retPickReserve", "dotOpenCustOrder"),
-                        (inputs, modifierSet) -> inputs.get("dotShipNotBill")
-                                .add(inputs.get("retPickReserve"))
-                                .add(inputs.get("dotOpenCustOrder"))
-                ),
-                Map.of()
-        );
+                            BigDecimal omsValue = flowValues.getOrDefault(CalculationFlow.OMS.name(), BigDecimal.ZERO);
+                            BigDecimal jeiValue = flowValues.getOrDefault(CalculationFlow.JEI.name(), BigDecimal.ZERO);
 
-        // 6. Uncommitted Hard Reserve Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "uncommittedHardReserve",
-                        List.of("dotHardReserveAtsNo", "retHardReserveAtsNo", "heldHardReserve"),
-                        (inputs, modifierSet) -> inputs.get("dotHardReserveAtsNo")
-                                .add(inputs.get("retHardReserveAtsNo"))
-                                .add(inputs.get("heldHardReserve"))
-                ),
-                Map.of()
-        );
-
-        // 7. OMS Supply Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "omsSupply",
-                        List.of("dotAts", "dotOpenCustOrder"),
-                        (inputs, modifierSet) -> inputs.get("dotAts")
-                                .add(inputs.get("dotOpenCustOrder"))
-                ),
-                Map.of()
-        );
-
-        // 8. Retail Final Supply Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "retailFinal",
-                        List.of("retailAts", "retPickReserve", "retHardReserveAtsNo", "heldHardReserve"),
-                        (inputs, modifierSet) -> inputs.get("retailAts")
-                                .add(inputs.get("retPickReserve"))
-                                .add(inputs.get("retHardReserveAtsNo"))
-                                .add(inputs.get("heldHardReserve"))
-                ),
-                Map.of()
-        );
-
-        // 9. OMS Final Supply Calculation
-        engine.addStep(
-                new CalculationStep(
-                        "omsFinal",
-                        List.of("omsSupply", "dotOpenCustOrder"),
-                        (inputs, modifierSet) -> {
-                            // Implement buyer class logic if applicable
-                            return inputs.get("omsSupply");
+                            return jeiValue.compareTo(BigDecimal.ZERO) > 0 && !jeiValue.equals(omsValue)
+                                    ? jeiValue
+                                    : omsValue;
                         }
-                ),
-                Map.of()
+                )
         );
 
+        // Uncommitted Calculation
+        engine.addStep(
+                new CalculationStep(
+                        "uncommit",
+                        List.of("initialAfs", "retPickReserve", "dotPickReserve"),
+                        (inputs) -> inputs.get("initialAfs")
+                                .subtract(inputs.get("retPickReserve"))
+                                .subtract(inputs.get("dotPickReserve"))
+                ),
+                Map.of(),
+                null
+        );
 
+        // Final Reserve Calculation
+        engine.addStep(
+                new CalculationStep(
+                        "finalReserve",
+                        List.of("uncommit", "dotOpenCustOrder", "dotShipNotBill"),
+                        (inputs) -> inputs.get("uncommit")
+                                .subtract(inputs.get("dotOpenCustOrder"))
+                                .subtract(inputs.get("dotShipNotBill"))
+                ),
+                Map.of(),
+                null
+        );
 
         return engine;
     }
-
-
 }

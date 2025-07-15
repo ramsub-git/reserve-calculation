@@ -5,4 +5,3 @@ public enum CalculationFlow {
     JEI,    // Financial Calculation
     FRM     // Frame/Availability Calculation
 }
-

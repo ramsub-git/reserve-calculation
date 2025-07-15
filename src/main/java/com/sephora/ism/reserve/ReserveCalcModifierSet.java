@@ -1,13 +1,14 @@
-
 package com.sephora.ism.reserve;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ReserveCalcModifierSet {
+    private final String modifierSetName;
     private final Map<String, Object> modifiers;
 
-    public ReserveCalcModifierSet() {
+    public ReserveCalcModifierSet(String modifierSetName) {
+        this.modifierSetName = modifierSetName;
         this.modifiers = new HashMap<>();
     }
 
@@ -19,7 +20,7 @@ public class ReserveCalcModifierSet {
         return modifiers.get(key);
     }
 
-    public boolean hasModifier(String key) {
-        return modifiers.containsKey(key);
+    public String getModifierSetName() {
+        return modifierSetName;
     }
 }

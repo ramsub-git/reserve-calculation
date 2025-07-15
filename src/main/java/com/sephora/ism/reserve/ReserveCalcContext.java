@@ -8,63 +8,91 @@ public class ReserveCalcContext {
     private static final Logger LOGGER = Logger.getLogger(ReserveCalcContext.class.getName());
 
     private final Map<String, BigDecimal> fieldValues = new LinkedHashMap<>();
-    private final Map<String, Map<CalculationFlow, BigDecimal>> modifierValues = new LinkedHashMap<>();
-    private final Map<String, List<BigDecimal>> runningHistory = new LinkedHashMap<>();
-    private final Map<String, List<String>> calculationSteps = new LinkedHashMap<>();
+    private final Map<String, Object> extendedValues = new LinkedHashMap<>(); // Add this
 
     public void put(String field, BigDecimal value) {
         fieldValues.put(field, value);
-        
-        // Update running history
-        runningHistory.computeIfAbsent(field, k -> new ArrayList<>()).add(value);
-        
-        // Track calculation steps
-        calculationSteps.computeIfAbsent(field, k -> new ArrayList<>()).add("Main Calculation");
-        
-        // Automatically populate modifier values if not exists
-        modifierValues.computeIfAbsent(field, k -> new LinkedHashMap<>())
-                      .putIfAbsent(CalculationFlow.OMS, value);
     }
 
-    public void putModifierValue(String field, CalculationFlow flow, BigDecimal value, String calculationStep) {
-        modifierValues.computeIfAbsent(field, k -> new LinkedHashMap<>())
-                      .put(flow, value);
-        
-        // Track modifier calculation steps
-        calculationSteps.computeIfAbsent(field, k -> new ArrayList<>())
-                        .add(flow + " - " + calculationStep);
+    // New method to store extended values
+    public void putExtended(String field, Object value) {
+        extendedValues.put(field, value);
+    }
+
+    public Object getExtended(String field) {
+        return extendedValues.get(field);
     }
 
     public BigDecimal get(String field) {
         return fieldValues.getOrDefault(field, BigDecimal.ZERO);
     }
 
-    public BigDecimal getModifierValue(String field, CalculationFlow flow) {
-        return modifierValues.getOrDefault(field, Collections.emptyMap())
-                             .getOrDefault(flow, get(field));
+    public void clear() {
+        fieldValues.clear();
+        extendedValues.clear(); // Clear extended values as well
     }
 
-    public List<BigDecimal> getRunningHistory(String field) {
-        return runningHistory.getOrDefault(field, Collections.emptyList());
-    }
+    public void calculateSteps(
+            List<ReserveCalcStep> currentSteps,
+            ReserveCalcStep contextConditionStep
+    ) {
+        // Calculate for each flow
+        Map<CalculationFlow, BigDecimal> stepValues = new LinkedHashMap<>();
+        Map<CalculationFlow, Map<String, BigDecimal>> flowStepValues = new LinkedHashMap<>();
 
-    public List<String> getCalculationSteps(String field) {
-        return calculationSteps.getOrDefault(field, Collections.emptyList());
+        for (CalculationFlow flow : CalculationFlow.values()) {
+            ReserveCalcContext flowContext = new ReserveCalcContext();
+
+            // Find and calculate step for this flow
+            for (ReserveCalcStep step : currentSteps) {
+                step.calculateValue(flowContext);
+            }
+
+            // Store flow-specific calculation value
+            stepValues.put(flow, flowContext.get(currentSteps.get(0).getFieldName()));
+
+            // Store entire flow context values
+            flowStepValues.put(flow, flowContext.getAll());
+        }
+
+        // Determine final value using context condition
+        if (contextConditionStep != null) {
+            ReserveCalcContext conditionContext = new ReserveCalcContext();
+
+            // Prepare flow values for condition step
+            conditionContext.putExtended("flowValues", stepValues);
+
+            // Calculate final value
+            contextConditionStep.calculateValue(conditionContext);
+
+            // Update main context
+            put(
+                    currentSteps.get(0).getFieldName(),
+                    conditionContext.get("selectedValue")
+            );
+        } else {
+            // Default to OMS flow if no context condition
+            put(
+                    currentSteps.get(0).getFieldName(),
+                    stepValues.get(CalculationFlow.OMS)
+            );
+        }
+
+        // Store flow-specific values
+        putExtended("flowStepValues", flowStepValues);
     }
 
     public Map<String, BigDecimal> getAll() {
         return new LinkedHashMap<>(fieldValues);
     }
 
-    public Map<String, Map<CalculationFlow, BigDecimal>> getAllModifierValues() {
-        return new LinkedHashMap<>(modifierValues);
-    }
+    public Map<CalculationFlow, Map<String, BigDecimal>> getFlowValues() {
+        Object flowStepValuesObj = getExtended("flowStepValues");
 
-    public void logContextState() {
-        LOGGER.info("Context State:");
-        fieldValues.forEach((field, value) -> 
-            LOGGER.info(field + ": " + value + " (Steps: " + 
-                String.join(" -> ", getCalculationSteps(field)) + ")")
-        );
+        if (flowStepValuesObj instanceof Map) {
+            return (Map<CalculationFlow, Map<String, BigDecimal>>) flowStepValuesObj;
+        }
+
+        return new LinkedHashMap<>();
     }
 }

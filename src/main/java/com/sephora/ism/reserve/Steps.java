@@ -3,67 +3,67 @@ package com.sephora.ism.reserve;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
-import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 class SkulocFieldStep extends ReserveCalcStep {
-    private final BigDecimal value;
-
-    public SkulocFieldStep(String fieldName, BigDecimal value) {
+    public SkulocFieldStep(String fieldName) {
         super(fieldName, List.of());
-        this.value = value;
     }
 
     @Override
-    public void calculateValue(ReserveCalcContext context, ReserveCalcModifierSet modifierSet) {
-        context.put(fieldName, value);
+    public void calculateValue(ReserveCalcContext context) {
+        // No action needed in engine setup
+        // The actual population will happen when InitialValueWrapper is used
     }
 }
 
 class CalculationStep extends ReserveCalcStep {
-    private static final Logger LOGGER = Logger.getLogger(CalculationStep.class.getName());
-    private final BiFunction<Map<String, BigDecimal>, ReserveCalcModifierSet, BigDecimal> calculationLogic;
+    private final Function<Map<String, BigDecimal>, BigDecimal> calculationLogic;
 
     public CalculationStep(
-        String fieldName, 
-        List<String> dependencyFields,
-        BiFunction<Map<String, BigDecimal>, ReserveCalcModifierSet, BigDecimal> calculationLogic
+            String fieldName,
+            List<String> dependencyFields,
+            Function<Map<String, BigDecimal>, BigDecimal> calculationLogic
     ) {
         super(fieldName, dependencyFields);
         this.calculationLogic = calculationLogic;
     }
 
     @Override
-    public void calculateValue(ReserveCalcContext context, ReserveCalcModifierSet modifierSet) {
-        Map<String, BigDecimal> inputs = dependencyFields.stream()
-            .collect(java.util.stream.Collectors.toMap(
-                dep -> dep, 
-                context::get
-            ));
+    public void calculateValue(ReserveCalcContext context) {
+        Map<String, BigDecimal> inputs = getDependencyFields().stream()
+                .collect(Collectors.toMap(
+                        dep -> dep,
+                        context::get
+                ));
 
-        try {
-            BigDecimal calculatedValue = calculationLogic.apply(inputs, modifierSet);
-            context.put(fieldName, calculatedValue);
-
-            calculationFlows.forEach((flow, step) -> {
-                if (step != null) {
-                    step.calculateValue(context, modifierSet);
-                }
-            });
-
-        } catch (Exception e) {
-            LOGGER.severe("Calculation error in step " + fieldName + ": " + e.getMessage());
-            throw new RuntimeException("Calculation failed", e);
-        }
+        BigDecimal result = calculationLogic.apply(inputs);
+        context.put(getFieldName(), result);
     }
 }
 
-class OverrideCalculationStep extends CalculationStep {
-    public OverrideCalculationStep(
-        String fieldName, 
-        List<String> dependencyFields,
-        BiFunction<Map<String, BigDecimal>, ReserveCalcModifierSet, BigDecimal> calculationLogic
+class ContextConditionStep extends ReserveCalcStep {
+    private final Function<Map<String, BigDecimal>, BigDecimal> conditionLogic;
+
+    public ContextConditionStep(
+            String fieldName,
+            List<String> dependencyFields,
+            Function<Map<String, BigDecimal>, BigDecimal> conditionLogic
     ) {
-        super(fieldName, dependencyFields, calculationLogic);
+        super(fieldName, dependencyFields);
+        this.conditionLogic = conditionLogic;
+    }
+
+    @Override
+    public void calculateValue(ReserveCalcContext context) {
+        Map<String, BigDecimal> inputs = getDependencyFields().stream()
+                .collect(Collectors.toMap(
+                        dep -> dep,
+                        context::get
+                ));
+
+        BigDecimal selectedValue = conditionLogic.apply(inputs);
+        context.put("selectedValue", selectedValue);
     }
 }
