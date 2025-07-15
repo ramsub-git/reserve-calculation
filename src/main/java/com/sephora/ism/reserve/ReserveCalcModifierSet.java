@@ -1,13 +1,25 @@
+
 package com.sephora.ism.reserve;
 
-public class ReserveCalcModifierSet {
-    private final String modifierSetName;
+import java.util.HashMap;
+import java.util.Map;
 
-    public ReserveCalcModifierSet(String modifierSetName) {
-        this.modifierSetName = modifierSetName;
+public class ReserveCalcModifierSet {
+    private final Map<String, Object> modifiers;
+
+    public ReserveCalcModifierSet() {
+        this.modifiers = new HashMap<>();
     }
 
-    public String getModifierSetName() {
-        return modifierSetName;
+    public void addModifier(String key, Object value) {
+        modifiers.put(key, value);
+    }
+
+    public Object getModifier(String key) {
+        return modifiers.get(key);
+    }
+
+    public boolean hasModifier(String key) {
+        return modifiers.containsKey(key);
     }
 }
