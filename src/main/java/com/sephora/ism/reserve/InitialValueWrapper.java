@@ -1,4 +1,4 @@
-// InitialValueWrapper.java
+// InitialValueWrapper.java - Updated to remove damaged field
 package com.sephora.ism.reserve;
 
 import java.math.BigDecimal;
