@@ -1,89 +1,53 @@
-// Inventory.java - Updated to include OOB and remove damaged
 package com.sephora.ism.reserve;
 
 import java.math.BigDecimal;
 
 public class Inventory {
-    private BigDecimal ssohu;       // On Hand
-    private BigDecimal ssrohm;      // Rohm
-    private BigDecimal sslost;      // Lost
-    private BigDecimal oobAdjustment; // Out of Balance adjustment
-    private BigDecimal ssrohp;      // Retail Pick Reserve
-    private BigDecimal dotShipNotBill;
-    private BigDecimal dotOpenCustOrder;
+
+    private BigDecimal onHand;
+    private BigDecimal rohm;
+    private BigDecimal lost;
+    private BigDecimal oobAdjustment;
     private BigDecimal dotHardReserveAtsYes;
     private BigDecimal dotHardReserveAtsNo;
     private BigDecimal retHardReserveAtsYes;
     private BigDecimal retHardReserveAtsNo;
     private BigDecimal heldHardReserve;
-    private BigDecimal dotReserve;
-    private BigDecimal retReserve;
-    private BigDecimal dotOutb;
-    private BigDecimal retNeed;
 
-    // Constructors
-    public Inventory() {
+    public BigDecimal getOnHand() {
+        return onHand;
     }
 
-    // Getters and setters
-    public BigDecimal getSsohu() {
-        return ssohu != null ? ssohu : BigDecimal.ZERO;
+    public void setOnHand(BigDecimal onHand) {
+        this.onHand = onHand;
     }
 
-    public void setSsohu(BigDecimal ssohu) {
-        this.ssohu = ssohu;
+    public BigDecimal getRohm() {
+        return rohm;
     }
 
-    public BigDecimal getSsrohm() {
-        return ssrohm != null ? ssrohm : BigDecimal.ZERO;
+    public void setRohm(BigDecimal rohm) {
+        this.rohm = rohm;
     }
 
-    public void setSsrohm(BigDecimal ssrohm) {
-        this.ssrohm = ssrohm;
+    public BigDecimal getLost() {
+        return lost;
     }
 
-    public BigDecimal getSslost() {
-        return sslost != null ? sslost : BigDecimal.ZERO;
-    }
-
-    public void setSslost(BigDecimal sslost) {
-        this.sslost = sslost;
+    public void setLost(BigDecimal lost) {
+        this.lost = lost;
     }
 
     public BigDecimal getOobAdjustment() {
-        return oobAdjustment != null ? oobAdjustment : BigDecimal.ZERO;
+        return oobAdjustment;
     }
 
     public void setOobAdjustment(BigDecimal oobAdjustment) {
         this.oobAdjustment = oobAdjustment;
     }
 
-    public BigDecimal getSsrohp() {
-        return ssrohp != null ? ssrohp : BigDecimal.ZERO;
-    }
-
-    public void setSsrohp(BigDecimal ssrohp) {
-        this.ssrohp = ssrohp;
-    }
-
-    public BigDecimal getDotShipNotBill() {
-        return dotShipNotBill != null ? dotShipNotBill : BigDecimal.ZERO;
-    }
-
-    public void setDotShipNotBill(BigDecimal dotShipNotBill) {
-        this.dotShipNotBill = dotShipNotBill;
-    }
-
-    public BigDecimal getDotOpenCustOrder() {
-        return dotOpenCustOrder != null ? dotOpenCustOrder : BigDecimal.ZERO;
-    }
-
-    public void setDotOpenCustOrder(BigDecimal dotOpenCustOrder) {
-        this.dotOpenCustOrder = dotOpenCustOrder;
-    }
-
     public BigDecimal getDotHardReserveAtsYes() {
-        return dotHardReserveAtsYes != null ? dotHardReserveAtsYes : BigDecimal.ZERO;
+        return dotHardReserveAtsYes;
     }
 
     public void setDotHardReserveAtsYes(BigDecimal dotHardReserveAtsYes) {
@@ -91,7 +55,7 @@ public class Inventory {
     }
 
     public BigDecimal getDotHardReserveAtsNo() {
-        return dotHardReserveAtsNo != null ? dotHardReserveAtsNo : BigDecimal.ZERO;
+        return dotHardReserveAtsNo;
     }
 
     public void setDotHardReserveAtsNo(BigDecimal dotHardReserveAtsNo) {
@@ -99,7 +63,7 @@ public class Inventory {
     }
 
     public BigDecimal getRetHardReserveAtsYes() {
-        return retHardReserveAtsYes != null ? retHardReserveAtsYes : BigDecimal.ZERO;
+        return retHardReserveAtsYes;
     }
 
     public void setRetHardReserveAtsYes(BigDecimal retHardReserveAtsYes) {
@@ -107,7 +71,7 @@ public class Inventory {
     }
 
     public BigDecimal getRetHardReserveAtsNo() {
-        return retHardReserveAtsNo != null ? retHardReserveAtsNo : BigDecimal.ZERO;
+        return retHardReserveAtsNo;
     }
 
     public void setRetHardReserveAtsNo(BigDecimal retHardReserveAtsNo) {
@@ -115,42 +79,10 @@ public class Inventory {
     }
 
     public BigDecimal getHeldHardReserve() {
-        return heldHardReserve != null ? heldHardReserve : BigDecimal.ZERO;
+        return heldHardReserve;
     }
 
     public void setHeldHardReserve(BigDecimal heldHardReserve) {
         this.heldHardReserve = heldHardReserve;
-    }
-
-    public BigDecimal getDotReserve() {
-        return dotReserve != null ? dotReserve : BigDecimal.ZERO;
-    }
-
-    public void setDotReserve(BigDecimal dotReserve) {
-        this.dotReserve = dotReserve;
-    }
-
-    public BigDecimal getRetReserve() {
-        return retReserve != null ? retReserve : BigDecimal.ZERO;
-    }
-
-    public void setRetReserve(BigDecimal retReserve) {
-        this.retReserve = retReserve;
-    }
-
-    public BigDecimal getDotOutb() {
-        return dotOutb != null ? dotOutb : BigDecimal.ZERO;
-    }
-
-    public void setDotOutb(BigDecimal dotOutb) {
-        this.dotOutb = dotOutb;
-    }
-
-    public BigDecimal getRetNeed() {
-        return retNeed != null ? retNeed : BigDecimal.ZERO;
-    }
-
-    public void setRetNeed(BigDecimal retNeed) {
-        this.retNeed = retNeed;
     }
 }

@@ -10,10 +10,11 @@ import java.util.Map;
 public class ReserveCalculationController {
     @PostMapping("/calculate/pojo")
     public Map<String, BigDecimal> calculateFromPojo(@RequestBody Inventory skulocRecord) {
-        ReserveCalculationEngine engine = ReserveCalculationEngine.setupEngine();
+        ReserveCalculationEngine engine = new ReserveCalculationEngine();
+        ReserveCalculationEngine.setupReserveCalculationSteps(engine);
         ReserveCalcContext context = new ReserveCalcContext();
 
-        new InitialValueWrapper(skulocRecord).validate().populateContext(context);
+        InitialValueWrapper.fromInventory(skulocRecord).applyToContext(context);
 
         engine.calculate(context);
         return context.getAll();
@@ -21,10 +22,11 @@ public class ReserveCalculationController {
 
     @PostMapping("/calculate/map")
     public Map<String, BigDecimal> calculateFromMap(@RequestBody Map<String, BigDecimal> fieldValues) {
-        ReserveCalculationEngine engine = ReserveCalculationEngine.setupEngine();
+        ReserveCalculationEngine engine = new ReserveCalculationEngine();
+        ReserveCalculationEngine.setupReserveCalculationSteps(engine);
         ReserveCalcContext context = new ReserveCalcContext();
 
-        new InitialValueWrapper(fieldValues).validate().populateContext(context);
+        new InitialValueWrapper(fieldValues).applyToContext(context);
 
         engine.calculate(context);
         return context.getAll();
@@ -32,9 +34,9 @@ public class ReserveCalculationController {
 
     @GetMapping("/test")
     public Map<String, BigDecimal> runTest() {
-        ReserveCalculationEngine engine = ReserveCalculationEngine.setupEngine();
+        ReserveCalculationEngine engine = new ReserveCalculationEngine();
+        ReserveCalculationEngine.setupReserveCalculationSteps(engine);
         ReserveCalcContext context = new ReserveCalcContext();
-
         // Sample test data
         context.put("onHand", new BigDecimal("100"));
         context.put("rohm", new BigDecimal("10"));

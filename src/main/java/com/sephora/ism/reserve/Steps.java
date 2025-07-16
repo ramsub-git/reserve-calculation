@@ -3,93 +3,108 @@ package com.sephora.ism.reserve;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
-class SkulocFieldStep extends ReserveCalcStep {
-    public SkulocFieldStep(String fieldName) {
-        super(fieldName, List.of());
+public class Steps {
+
+    // 1. SkulocFieldStep: Direct passthrough or no-op
+    public static class SkulocFieldStep extends ReserveCalcStep {
+        public SkulocFieldStep(String fieldName) {
+            super(fieldName, List.of(), null, null, null, null);
+        }
+
+        @Override
+        protected BigDecimal compute(ReserveCalcContext context) {
+            return context.get(getFieldName());
+        }
     }
 
-    @Override
-    public void calculateValue(ReserveCalcContext context) {
-        // No action needed - field populated by InitialValueWrapper
-    }
-}
+    // 2. CalculationStep: Formula-based calculation
+    public static class CalculationStep extends ReserveCalcStep {
+        private final Function<List<BigDecimal>, BigDecimal> formula;
 
-class CalculationStep extends ReserveCalcStep {
-    private static final Logger LOGGER = Logger.getLogger(CalculationStep.class.getName());
-    private final Function<Map<String, BigDecimal>, BigDecimal> calculationLogic;
+        public CalculationStep(String fieldName, List<String> dependencyFields,
+                               Function<List<BigDecimal>, BigDecimal> formula,
+                               Function<ReserveCalcContext, Boolean> preCondition,
+                               BiFunction<ReserveCalcContext, BigDecimal, Boolean> postCondition,
+                               Function<ReserveCalcContext, ReserveCalcContext> preProcessing,
+                               BiFunction<ReserveCalcContext, BigDecimal, BigDecimal> postProcessing) {
+            super(fieldName, dependencyFields, preCondition, postCondition, preProcessing, postProcessing);
+            this.formula = formula;
+        }
 
-    public CalculationStep(
-            String fieldName,
-            List<String> dependencyFields,
-            Function<Map<String, BigDecimal>, BigDecimal> calculationLogic
-    ) {
-        super(fieldName, dependencyFields);
-        this.calculationLogic = calculationLogic;
-    }
-
-    @Override
-    public void calculateValue(ReserveCalcContext context) {
-        Map<String, BigDecimal> inputs = getDependencyFields().stream()
-                .collect(Collectors.toMap(
-                        dep -> dep,
-                        dep -> context.get(dep)
-                ));
-
-        BigDecimal result = calculationLogic.apply(inputs);
-        context.put(getFieldName(), result);
-        LOGGER.info(String.format("Calculated %s = %s with inputs: %s",
-                getFieldName(), result, inputs));
-    }
-}
-
-// Constraint step to ensure we don't subtract more than available
-class ConstraintStep extends ReserveCalcStep {
-    private static final Logger LOGGER = Logger.getLogger(ConstraintStep.class.getName());
-
-    public ConstraintStep(String fieldName, String baseField, String availableField) {
-        super(fieldName, List.of(baseField, availableField));
+        @Override
+        protected BigDecimal compute(ReserveCalcContext context) {
+            List<BigDecimal> values = getDependencyFields().stream()
+                    .map(context::get)
+                    .toList();
+            return formula.apply(values);
+        }
     }
 
-    @Override
-    public void calculateValue(ReserveCalcContext context) {
-        String baseField = getDependencyFields().get(0);
-        String availableField = getDependencyFields().get(1);
+    // 3. ConstraintStep: Min/Max clamping logic
+    public static class ConstraintStep extends ReserveCalcStep {
+        private final String baseField;
+        private final String constraintField;
 
-        BigDecimal base = context.get(baseField);
-        BigDecimal available = context.get(availableField);
+        public ConstraintStep(String fieldName, String baseField, String constraintField) {
+            super(fieldName, List.of(baseField, constraintField), null, null, null, null);
+            this.baseField = baseField;
+            this.constraintField = constraintField;
+        }
 
-        // Constraint: can't consume more than available
-        BigDecimal result = base.min(available);
-        context.put(getFieldName(), result);
-
-        LOGGER.info(String.format("Constraint %s: min(%s=%s, %s=%s) = %s",
-                getFieldName(), baseField, base, availableField, available, result));
-    }
-}
-
-class ContextConditionStep extends ReserveCalcStep {
-    private static final Logger LOGGER = Logger.getLogger(ContextConditionStep.class.getName());
-    private final Function<ReserveCalcContext, BigDecimal> conditionLogic;
-
-    public ContextConditionStep(
-            String fieldName,
-            List<String> dependencyFields,
-            Function<ReserveCalcContext, BigDecimal> conditionLogic
-    ) {
-        super(fieldName, dependencyFields);
-        this.conditionLogic = conditionLogic;
+        @Override
+        protected BigDecimal compute(ReserveCalcContext context) {
+            BigDecimal base = context.get(baseField);
+            BigDecimal constraint = context.get(constraintField);
+            return base.min(constraint).max(BigDecimal.ZERO);
+        }
     }
 
-    @Override
-    public void calculateValue(ReserveCalcContext context) {
-        BigDecimal selectedValue = conditionLogic.apply(context);
-        context.put(getFieldName(), selectedValue);
-        LOGGER.info(String.format("Context condition %s selected value: %s",
-                getFieldName(), selectedValue));
+    // 4. ContextConditionStep: Select between context values based on logic
+    public static class ContextConditionStep extends ReserveCalcStep {
+        private final Function<ReserveCalcContext, BigDecimal> conditionLogic;
+
+        public ContextConditionStep(String fieldName, List<String> dependencyFields,
+                                    Function<ReserveCalcContext, BigDecimal> conditionLogic) {
+            super(fieldName, dependencyFields, null, null, null, null);
+            this.conditionLogic = conditionLogic;
+        }
+
+        @Override
+        protected BigDecimal compute(ReserveCalcContext context) {
+            return conditionLogic.apply(context);
+        }
+    }
+
+    // 5. ConstantStep: Static value
+    public static class ConstantStep extends ReserveCalcStep {
+        private final BigDecimal constantValue;
+
+        public ConstantStep(String fieldName, BigDecimal constantValue) {
+            super(fieldName, List.of(), null, null, null, null);
+            this.constantValue = constantValue;
+        }
+
+        @Override
+        protected BigDecimal compute(ReserveCalcContext context) {
+            return constantValue;
+        }
+    }
+
+    // 6. CopyStep: Copy from one field to another
+    public static class CopyStep extends ReserveCalcStep {
+        private final String sourceField;
+
+        public CopyStep(String fieldName, String sourceField) {
+            super(fieldName, List.of(sourceField), null, null, null, null);
+            this.sourceField = sourceField;
+        }
+
+        @Override
+        protected BigDecimal compute(ReserveCalcContext context) {
+            return context.get(sourceField);
+        }
     }
 }
