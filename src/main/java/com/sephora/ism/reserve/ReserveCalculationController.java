@@ -36,14 +36,33 @@ public class ReserveCalculationController {
     public Map<String, BigDecimal> runTest() {
         ReserveCalculationEngine engine = new ReserveCalculationEngine();
         ReserveCalculationEngine.setupReserveCalculationSteps(engine);
+
         ReserveCalcContext context = new ReserveCalcContext();
-        // Sample test data
+        // context.setFlow(CalculationFlow.OMS); // Ensure default flow is explicitly set
+
+        // Mandatory fields
         context.put("onHand", new BigDecimal("100"));
         context.put("rohm", new BigDecimal("10"));
         context.put("lost", new BigDecimal("5"));
-        context.put("damaged", new BigDecimal("2"));
+
+        // Add required additional fields with sample values
+        context.put("dotShipNotBill", BigDecimal.ZERO);
+        context.put("dotOpenCustOrder", BigDecimal.ZERO);
+        context.put("retPickReserve", BigDecimal.ZERO);
+        context.put("dotHardReserveAtsYes", BigDecimal.ZERO);
+        context.put("dotHardReserveAtsNo", BigDecimal.ZERO);
+        context.put("retHardReserveAtsYes", BigDecimal.ZERO);
+        context.put("retHardReserveAtsNo", BigDecimal.ZERO);
+        context.put("heldHardReserve", BigDecimal.ZERO);
+        context.put("dotReserve", BigDecimal.ZERO);
+        context.put("retReserve", BigDecimal.ZERO);
+        context.put("dotOutb", BigDecimal.ZERO);
+        context.put("retNeed", BigDecimal.ZERO);
+        context.put("oobAdjustment", BigDecimal.ZERO);
 
         engine.calculate(context);
+
         return context.getAll();
     }
+
 }
