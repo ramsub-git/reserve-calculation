@@ -1,3 +1,4 @@
+// ReserveCalcContext.java
 package com.sephora.ism.reserve;
 
 import java.math.BigDecimal;
@@ -7,110 +8,56 @@ import java.util.logging.Logger;
 public class ReserveCalcContext {
     private static final Logger LOGGER = Logger.getLogger(ReserveCalcContext.class.getName());
 
-    private final Map<String, BigDecimal> fieldValues = new LinkedHashMap<>();
-    private final Map<String, Object> extendedValues = new LinkedHashMap<>();
+    final Map<String, BigDecimal> fieldValues = new LinkedHashMap<>();
+    private final Map<String, List<BigDecimal>> fieldHistory = new LinkedHashMap<>();
+    private final Map<CalculationFlow, Map<String, BigDecimal>> flowContexts = new LinkedHashMap<>();
+
+    public ReserveCalcContext() {
+        // Initialize flow contexts
+        for (CalculationFlow flow : CalculationFlow.values()) {
+            flowContexts.put(flow, new LinkedHashMap<>());
+        }
+    }
 
     public void put(String field, BigDecimal value) {
-        LOGGER.info("Putting value in context: " + field + " = " + value);
+        // Track history for traceability
+        fieldHistory.computeIfAbsent(field, k -> new ArrayList<>()).add(value);
         fieldValues.put(field, value);
+        LOGGER.fine(String.format("Put %s = %s", field, value));
     }
 
     public BigDecimal get(String field) {
-        BigDecimal value = fieldValues.getOrDefault(field, BigDecimal.ZERO);
-        LOGGER.info("Getting value from context: " + field + " = " + value);
-        return value;
+        return fieldValues.getOrDefault(field, BigDecimal.ZERO);
     }
 
-    public void putExtended(String field, Object value) {
-        LOGGER.info("Putting extended value in context: " + field + " = " + value);
-        extendedValues.put(field, value);
+    public void putFlowValue(CalculationFlow flow, String field, BigDecimal value) {
+        flowContexts.get(flow).put(field, value);
+        LOGGER.fine(String.format("Put flow %s: %s = %s", flow, field, value));
     }
 
-    public Object getExtended(String field) {
-        Object value = extendedValues.get(field);
-        LOGGER.info("Getting extended value from context: " + field + " = " + value);
-        return value;
+    public BigDecimal getFlowValue(CalculationFlow flow, String field) {
+        return flowContexts.get(flow).getOrDefault(field, BigDecimal.ZERO);
     }
 
-    public void calculateSteps(
-            List<ReserveCalcStep> currentSteps,
-            ReserveCalcStep contextConditionStep
-    ) {
-        LOGGER.info("Starting calculateSteps with " + currentSteps.size() + " steps");
-
-        // Calculate for each flow
-        Map<CalculationFlow, BigDecimal> stepValues = new LinkedHashMap<>();
-        Map<CalculationFlow, Map<String, BigDecimal>> flowStepValues = new LinkedHashMap<>();
-
-        for (CalculationFlow flow : CalculationFlow.values()) {
-            LOGGER.info("Calculating steps for flow: " + flow);
-            ReserveCalcContext flowContext = new ReserveCalcContext();
-
-            // Find and calculate step for this flow
-            for (ReserveCalcStep step : currentSteps) {
-                LOGGER.info("Calculating step: " + step.getFieldName());
-                step.calculateValue(flowContext);
-            }
-
-            // Store flow-specific calculation value
-            BigDecimal flowStepValue = flowContext.get(currentSteps.get(0).getFieldName());
-            LOGGER.info("Flow " + flow + " step value: " + flowStepValue);
-            stepValues.put(flow, flowStepValue);
-
-            // Store entire flow context values
-            flowStepValues.put(flow, flowContext.getAll());
-        }
-
-        // Determine final value using context condition
-        if (contextConditionStep != null) {
-            LOGGER.info("Applying context condition step");
-            ReserveCalcContext conditionContext = new ReserveCalcContext();
-
-            // Prepare flow values for condition step
-            conditionContext.putExtended("flowValues", stepValues);
-
-            // Calculate final value
-            contextConditionStep.calculateValue(conditionContext);
-
-            // Update main context
-            BigDecimal selectedValue = conditionContext.get("selectedValue");
-            LOGGER.info("Selected value from context condition: " + selectedValue);
-            put(
-                    currentSteps.get(0).getFieldName(),
-                    selectedValue
-            );
-        } else {
-            // Default to OMS flow if no context condition
-            BigDecimal omsValue = stepValues.get(CalculationFlow.OMS);
-            LOGGER.info("No context condition, defaulting to OMS flow value: " + omsValue);
-            put(
-                    currentSteps.get(0).getFieldName(),
-                    omsValue
-            );
-        }
-
-        // Store flow-specific values
-        putExtended("flowStepValues", flowStepValues);
-        LOGGER.info("Calculation steps completed");
+    public Map<String, BigDecimal> getFlowContext(CalculationFlow flow) {
+        return new LinkedHashMap<>(flowContexts.get(flow));
     }
 
     public Map<String, BigDecimal> getAll() {
-        LOGGER.info("Retrieving all context values: " + fieldValues);
         return new LinkedHashMap<>(fieldValues);
     }
 
-    public Map<CalculationFlow, Map<String, BigDecimal>> getFlowValues() {
-        Object flowStepValuesObj = getExtended("flowStepValues");
+    public List<BigDecimal> getHistory(String field) {
+        return new ArrayList<>(fieldHistory.getOrDefault(field, List.of()));
+    }
 
-        if (flowStepValuesObj instanceof Map) {
-            Map<CalculationFlow, Map<String, BigDecimal>> flowValues =
-                    (Map<CalculationFlow, Map<String, BigDecimal>>) flowStepValuesObj;
+    // Copy current state to a flow context
+    public void copyToFlow(CalculationFlow flow) {
+        flowContexts.get(flow).putAll(fieldValues);
+    }
 
-            LOGGER.info("Retrieving flow values: " + flowValues);
-            return flowValues;
-        }
-
-        LOGGER.info("No flow values found, returning empty map");
-        return new LinkedHashMap<>();
+    // Ensure non-negative result with clamping
+    public void putNonNegative(String field, BigDecimal value) {
+        put(field, value.max(BigDecimal.ZERO));
     }
 }

@@ -1,3 +1,4 @@
+// ReserveCalcStep.java
 package com.sephora.ism.reserve;
 
 import java.math.BigDecimal;
@@ -5,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ReserveCalcStep {
+public abstract class ReserveCalcStep {
     private final String fieldName;
     private final List<String> dependencyFields;
 
@@ -22,9 +23,5 @@ public class ReserveCalcStep {
         return dependencyFields;
     }
 
-    public void calculateValue(ReserveCalcContext context) {
-        // Default implementation, typically overridden
-        Map<String, BigDecimal> inputs = dependencyFields.stream()
-                .collect(Collectors.toMap(dep -> dep, context::get));
-    }
+    public abstract void calculateValue(ReserveCalcContext context);
 }
