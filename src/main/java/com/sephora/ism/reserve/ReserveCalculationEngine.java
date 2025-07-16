@@ -3,6 +3,7 @@ package com.sephora.ism.reserve;
 import java.util.*;
 import java.util.logging.Logger;
 import java.math.BigDecimal;
+import java.util.stream.Collectors;
 
 public class ReserveCalculationEngine {
     private static final Logger LOGGER = Logger.getLogger(ReserveCalculationEngine.class.getName());
@@ -15,29 +16,33 @@ public class ReserveCalculationEngine {
             Map<CalculationFlow, ReserveCalcStep> alternateSteps,
             ReserveCalcStep contextConditionStep
     ) {
-        // Add main step to primary flow
+        LOGGER.info("Adding step: " + mainStep.getFieldName());
         flowSteps.computeIfAbsent(CalculationFlow.OMS, k -> new ArrayList<>()).add(mainStep);
 
-        // Add alternate steps to their respective flows
         alternateSteps.forEach((flow, step) -> {
+            LOGGER.info("Adding alternate step for flow " + flow + ": " + step.getFieldName());
             flowSteps.computeIfAbsent(flow, k -> new ArrayList<>()).add(step);
         });
 
-        // Store context condition step
-        contextConditionSteps.put(mainStep.getFieldName(), contextConditionStep);
+        if (contextConditionStep != null) {
+            LOGGER.info("Adding context condition step for: " + mainStep.getFieldName());
+            contextConditionSteps.put(mainStep.getFieldName(), contextConditionStep);
+        }
     }
 
     public void calculate(ReserveCalcContext context) {
-        // Determine the maximum number of steps across all flows
+        LOGGER.info("Starting calculation process");
         int maxSteps = flowSteps.values().stream()
                 .mapToInt(List::size)
                 .max()
                 .orElse(0);
 
-        // Iterate through steps by index
+        LOGGER.info("Maximum steps across flows: " + maxSteps);
+
         for (int stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
-            // Collect steps at this index from all flows
+            LOGGER.info("Processing step index: " + stepIndex);
             List<ReserveCalcStep> currentSteps = new ArrayList<>();
+
             for (CalculationFlow flow : flowSteps.keySet()) {
                 List<ReserveCalcStep> flowStepList = flowSteps.get(flow);
                 if (stepIndex < flowStepList.size()) {
@@ -45,12 +50,19 @@ public class ReserveCalculationEngine {
                 }
             }
 
-            // Calculate current steps across flows
+            LOGGER.info("Current steps for this iteration: " +
+                    currentSteps.stream()
+                            .map(ReserveCalcStep::getFieldName)
+                            .collect(Collectors.toList())
+            );
+
             context.calculateSteps(
                     currentSteps,
                     contextConditionSteps.get(currentSteps.get(0).getFieldName())
             );
         }
+
+        LOGGER.info("Calculation process completed");
     }
 
     public static ReserveCalculationEngine setupEngine() {

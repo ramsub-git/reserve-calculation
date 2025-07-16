@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
 
 class SkulocFieldStep extends ReserveCalcStep {
     public SkulocFieldStep(String fieldName) {
@@ -44,6 +46,8 @@ class CalculationStep extends ReserveCalcStep {
 }
 
 class ContextConditionStep extends ReserveCalcStep {
+    private static final Logger LOGGER = Logger.getLogger(ContextConditionStep.class.getName());
+
     private final Function<Map<String, BigDecimal>, BigDecimal> conditionLogic;
 
     public ContextConditionStep(
@@ -57,13 +61,19 @@ class ContextConditionStep extends ReserveCalcStep {
 
     @Override
     public void calculateValue(ReserveCalcContext context) {
+        LOGGER.info("Calculating context condition for step: " + getFieldName());
+
         Map<String, BigDecimal> inputs = getDependencyFields().stream()
                 .collect(Collectors.toMap(
                         dep -> dep,
                         context::get
                 ));
 
+        LOGGER.info("Condition step inputs: " + inputs);
+
         BigDecimal selectedValue = conditionLogic.apply(inputs);
+
+        LOGGER.info("Selected value: " + selectedValue);
         context.put("selectedValue", selectedValue);
     }
 }
