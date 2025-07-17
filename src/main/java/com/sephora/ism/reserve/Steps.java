@@ -2,7 +2,9 @@
 package com.sephora.ism.reserve;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -15,17 +17,29 @@ public class Steps {
         }
 
         @Override
-        protected BigDecimal compute(ReserveCalcContext context) {
-            return context.get(getFieldName());
+        public BigDecimal calculateValue(ReserveCalcContext context) {
+            if (context.getInitialValueWrapper() == null) {
+                throw new IllegalStateException("InitialValueWrapper not set in context.");
+            }
+            return context.getInitialValueWrapper().get(fieldName);
         }
+
+        @Override
+        public ReserveCalcStep copy() {
+            SkulocFieldStep copy = new SkulocFieldStep(fieldName);
+            copy.flow = this.flow;
+            return copy;
+        }
+
+
     }
 
     // 2. CalculationStep: Formula-based calculation
     public static class CalculationStep extends ReserveCalcStep {
-        private final Function<List<BigDecimal>, BigDecimal> formula;
+        private final Function<Map<String, BigDecimal>, BigDecimal> formula;
 
         public CalculationStep(String fieldName, List<String> dependencyFields,
-                               Function<List<BigDecimal>, BigDecimal> formula,
+                               Function<Map<String, BigDecimal>, BigDecimal> formula,
                                Function<ReserveCalcContext, Boolean> preCondition,
                                BiFunction<ReserveCalcContext, BigDecimal, Boolean> postCondition,
                                Function<ReserveCalcContext, ReserveCalcContext> preProcessing,
@@ -36,12 +50,36 @@ public class Steps {
 
         @Override
         protected BigDecimal compute(ReserveCalcContext context) {
-            List<BigDecimal> values = getDependencyFields().stream()
-                    .map(context::get)
-                    .toList();
-            return formula.apply(values);
+            Map<String, BigDecimal> inputs = new LinkedHashMap<>();
+            for (String dependency : dependencyFields) {
+                inputs.put(dependency, context.get(dependency));
+            }
+            BigDecimal result = formula.apply(inputs);
+
+    // Debug log for complex calculations
+    if (getFieldName().contains("X") || getFieldName().startsWith("@")) {
+        ReserveCalculationLogger.debugStepCalculation(
+            getFieldName(), 
+            inputs, 
+            result, 
+            "Custom formula"
+        );
+
+    }
+        return result;
+        }
+
+        @Override
+        public ReserveCalcStep copy() {
+            CalculationStep copy = new CalculationStep(fieldName, dependencyFields, formula, preCondition, postCondition, preProcessing, postProcessing);
+            copy.originalValue = this.originalValue;
+            copy.previousValue = this.previousValue;
+            copy.currentValue = this.currentValue;
+            copy.flow = this.flow;
+            return copy;
         }
     }
+
 
     // 3. ConstraintStep: Min/Max clamping logic
     public static class ConstraintStep extends ReserveCalcStep {
@@ -60,6 +98,17 @@ public class Steps {
             BigDecimal constraint = context.get(constraintField);
             return base.min(constraint).max(BigDecimal.ZERO);
         }
+
+        @Override
+        public ReserveCalcStep copy() {
+            ConstraintStep copy = new ConstraintStep(fieldName, baseField, constraintField);
+            copy.originalValue = this.originalValue;
+            copy.previousValue = this.previousValue;
+            copy.currentValue = this.currentValue;
+            copy.flow = this.flow;
+            return copy;
+        }
+
     }
 
     // 4. ContextConditionStep: Select between context values based on logic
@@ -76,6 +125,18 @@ public class Steps {
         protected BigDecimal compute(ReserveCalcContext context) {
             return conditionLogic.apply(context);
         }
+
+
+        @Override
+        public ReserveCalcStep copy() {
+            ContextConditionStep copy = new ContextConditionStep(fieldName, dependencyFields, conditionLogic);
+            copy.originalValue = this.originalValue;
+            copy.previousValue = this.previousValue;
+            copy.currentValue = this.currentValue;
+            copy.flow = this.flow;
+            return copy;
+        }
+
     }
 
     // 5. ConstantStep: Static value
@@ -90,6 +151,16 @@ public class Steps {
         @Override
         protected BigDecimal compute(ReserveCalcContext context) {
             return constantValue;
+        }
+
+        @Override
+        public ReserveCalcStep copy() {
+            ConstantStep copy = new ConstantStep(fieldName, constantValue);
+            copy.originalValue = this.originalValue;
+            copy.previousValue = this.previousValue;
+            copy.currentValue = this.currentValue;
+            copy.flow = this.flow;
+            return copy;
         }
     }
 
@@ -106,5 +177,17 @@ public class Steps {
         protected BigDecimal compute(ReserveCalcContext context) {
             return context.get(sourceField);
         }
+
+
+        @Override
+        public ReserveCalcStep copy() {
+            CopyStep copy = new CopyStep(fieldName, sourceField);
+            copy.originalValue = this.originalValue;
+            copy.previousValue = this.previousValue;
+            copy.currentValue = this.currentValue;
+            copy.flow = this.flow;
+            return copy;
+        }
+
     }
 }

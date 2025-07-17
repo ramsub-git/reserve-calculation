@@ -38,29 +38,38 @@ public class ReserveCalculationController {
         ReserveCalculationEngine.setupReserveCalculationSteps(engine);
 
         ReserveCalcContext context = new ReserveCalcContext();
-        // context.setFlow(CalculationFlow.OMS); // Ensure default flow is explicitly set
+//        context.setFlow(CalculationFlow.OMS);
 
-        // Mandatory fields
-        context.put("onHand", new BigDecimal("100"));
-        context.put("rohm", new BigDecimal("10"));
-        context.put("lost", new BigDecimal("5"));
 
-        // Add required additional fields with sample values
-        context.put("dotShipNotBill", BigDecimal.ZERO);
-        context.put("dotOpenCustOrder", BigDecimal.ZERO);
-        context.put("retPickReserve", BigDecimal.ZERO);
-        context.put("dotHardReserveAtsYes", BigDecimal.ZERO);
-        context.put("dotHardReserveAtsNo", BigDecimal.ZERO);
-        context.put("retHardReserveAtsYes", BigDecimal.ZERO);
-        context.put("retHardReserveAtsNo", BigDecimal.ZERO);
-        context.put("heldHardReserve", BigDecimal.ZERO);
-        context.put("dotReserve", BigDecimal.ZERO);
-        context.put("retReserve", BigDecimal.ZERO);
-        context.put("dotOutb", BigDecimal.ZERO);
-        context.put("retNeed", BigDecimal.ZERO);
-        context.put("oobAdjustment", BigDecimal.ZERO);
+        Map<String, BigDecimal> skulocData = Map.ofEntries(
+                Map.entry("ONHAND", new BigDecimal("626")),
+                Map.entry("ROHM", new BigDecimal("0")),
+                Map.entry("LOST", new BigDecimal("0")),
+                Map.entry("OOBADJ", new BigDecimal("0")),
 
+                Map.entry("SNB", new BigDecimal("1")),
+                Map.entry("DTCO", new BigDecimal("0")),
+                Map.entry("ROHP", new BigDecimal("0")),
+                Map.entry("DOTHRY", new BigDecimal("0")),
+                Map.entry("DOTHRN", new BigDecimal("0")),
+                Map.entry("RETHRY", new BigDecimal("0")),
+                Map.entry("RETHRN", new BigDecimal("0")),
+                Map.entry("HLDHR", new BigDecimal("0")),
+                Map.entry("DOTRSV", new BigDecimal("0")),
+                Map.entry("RETRSV", new BigDecimal("0")),
+                Map.entry("DOTOUTB", new BigDecimal("0")),
+                Map.entry("NEED", new BigDecimal("0"))
+        );
+
+        InitialValueWrapper initialValueWrapper = InitialValueWrapper.fromMap(skulocData);
+        context.setInitialValueWrapper(initialValueWrapper);
         engine.calculate(context);
+
+    // Log specific field history
+    ReserveCalculationLogger.logRunningTotalHistory(context, 
+        "INITAFS", "UNCOMAFS", "@DOTATS", "@RETAILATS");    
+
+
 
         return context.getAll();
     }

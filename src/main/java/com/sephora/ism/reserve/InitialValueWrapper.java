@@ -57,4 +57,9 @@ public class InitialValueWrapper {
     public Map<String, BigDecimal> getValues() {
         return new HashMap<>(values);
     }
+
+    public BigDecimal get(String fieldName) {
+        return values.getOrDefault(fieldName, BigDecimal.ZERO);
+    }
+
 }

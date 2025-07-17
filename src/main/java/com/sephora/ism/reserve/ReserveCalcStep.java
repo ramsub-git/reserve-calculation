@@ -6,19 +6,20 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public class ReserveCalcStep {
+public abstract class ReserveCalcStep {
 
-    private final String fieldName;
-    private final List<String> dependencyFields;
+    protected final String fieldName;
+    protected final List<String> dependencyFields;
+    protected CalculationFlow flow;
 
-    private BigDecimal originalValue;
-    private BigDecimal previousValue;
-    private BigDecimal currentValue;
+    protected BigDecimal originalValue;
+    protected BigDecimal previousValue;
+    protected BigDecimal currentValue;
 
-    private final Function<ReserveCalcContext, Boolean> preCondition;
-    private final BiFunction<ReserveCalcContext, BigDecimal, Boolean> postCondition;
-    private final Function<ReserveCalcContext, ReserveCalcContext> preProcessing;
-    private final BiFunction<ReserveCalcContext, BigDecimal, BigDecimal> postProcessing;
+    protected final Function<ReserveCalcContext, Boolean> preCondition;
+    protected final BiFunction<ReserveCalcContext, BigDecimal, Boolean> postCondition;
+    protected final Function<ReserveCalcContext, ReserveCalcContext> preProcessing;
+    protected final BiFunction<ReserveCalcContext, BigDecimal, BigDecimal> postProcessing;
 
     public ReserveCalcStep(
             String fieldName,
@@ -66,7 +67,7 @@ public class ReserveCalcStep {
         return sum;
     }
 
-    private void updateTracking(BigDecimal newValue) {
+    protected void updateTracking(BigDecimal newValue) {
         if (originalValue.equals(BigDecimal.ZERO)) {
             originalValue = newValue;
         }
@@ -74,13 +75,13 @@ public class ReserveCalcStep {
         currentValue = newValue;
     }
 
-    public ReserveCalcStep copy() {
-        ReserveCalcStep copy = new ReserveCalcStep(fieldName, dependencyFields, preCondition, postCondition, preProcessing, postProcessing);
-        copy.originalValue = this.originalValue;
-        copy.previousValue = this.previousValue;
-        copy.currentValue = this.currentValue;
-        return copy;
-    }
+//    public ReserveCalcStep copy() {
+//        ReserveCalcStep copy = new ReserveCalcStep(fieldName, dependencyFields, preCondition, postCondition, preProcessing, postProcessing);
+//        copy.originalValue = this.originalValue;
+//        copy.previousValue = this.previousValue;
+//        copy.currentValue = this.currentValue;
+//        return copy;
+//    }
 
     public String getFieldName() {
         return fieldName;
@@ -101,4 +102,14 @@ public class ReserveCalcStep {
     public BigDecimal getCurrentValue() {
         return currentValue;
     }
+
+    public void setFlow(CalculationFlow flow) {
+        this.flow = flow;
+    }
+
+    public CalculationFlow getFlow() {
+        return this.flow;
+    }
+
+    public abstract ReserveCalcStep copy();
 }
