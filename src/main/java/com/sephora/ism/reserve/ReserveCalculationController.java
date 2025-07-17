@@ -42,20 +42,20 @@ public class ReserveCalculationController {
 
 
         Map<String, BigDecimal> skulocData = Map.ofEntries(
-                Map.entry("ONHAND", new BigDecimal("626")),
+                Map.entry("ONHAND", new BigDecimal("4593")),
                 Map.entry("ROHM", new BigDecimal("0")),
-                Map.entry("LOST", new BigDecimal("0")),
-                Map.entry("OOBADJ", new BigDecimal("0")),
+                Map.entry("LOST", new BigDecimal("1")),
+                Map.entry("OOBADJ", new BigDecimal("535")),
 
-                Map.entry("SNB", new BigDecimal("1")),
+                Map.entry("SNB", new BigDecimal("0")),
                 Map.entry("DTCO", new BigDecimal("0")),
                 Map.entry("ROHP", new BigDecimal("0")),
                 Map.entry("DOTHRY", new BigDecimal("0")),
-                Map.entry("DOTHRN", new BigDecimal("0")),
+                Map.entry("DOTHRN", new BigDecimal("5984")),
                 Map.entry("RETHRY", new BigDecimal("0")),
-                Map.entry("RETHRN", new BigDecimal("0")),
-                Map.entry("HLDHR", new BigDecimal("0")),
-                Map.entry("DOTRSV", new BigDecimal("0")),
+                Map.entry("RETHRN", new BigDecimal("1500")),
+                Map.entry("HLDHR", new BigDecimal("2992")),
+                Map.entry("DOTRSV", new BigDecimal("2992")),
                 Map.entry("RETRSV", new BigDecimal("0")),
                 Map.entry("DOTOUTB", new BigDecimal("0")),
                 Map.entry("NEED", new BigDecimal("0"))
@@ -65,10 +65,9 @@ public class ReserveCalculationController {
         context.setInitialValueWrapper(initialValueWrapper);
         engine.calculate(context);
 
-    // Log specific field history
-    ReserveCalculationLogger.logRunningTotalHistory(context, 
-        "INITAFS", "UNCOMAFS", "@DOTATS", "@RETAILATS");    
-
+        // Log specific field history
+        ReserveCalculationLogger.logRunningTotalHistory(context,
+                "INITAFS", "UNCOMAFS", "@DOTATS", "@RETAILATS");
 
 
         return context.getAll();

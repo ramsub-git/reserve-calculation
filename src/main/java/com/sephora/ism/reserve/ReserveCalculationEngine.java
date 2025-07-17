@@ -68,16 +68,14 @@ public class ReserveCalculationEngine {
 
             context.calculateSteps(stepIndex, currentSteps, contextConditionStep);
 
-        // Log after calculation
-        ReserveCalculationLogger.logStepCalculation(stepIndex, currentSteps, context);
+            // Log after calculation
+            ReserveCalculationLogger.logStepCalculation(stepIndex, currentSteps, context);
 
 
-
-            
         }
 
-    // Log final summary
-    ReserveCalculationLogger.logFinalSummary(context);
+        // Log final summary
+        ReserveCalculationLogger.logFinalSummary(context);
 
         // Perform post-checks
         if (!enginePostCheck.test(context)) {
@@ -128,6 +126,38 @@ public class ReserveCalculationEngine {
                 Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("OOBADJ"),
                         CalculationFlow.FRM, new Steps.SkulocFieldStep("OOBADJ")),
                 null, false);
+
+
+        // Initial AFS Calculation (INITAFS) with alternate flow for JEI
+        engine.addStep("INITAFS",
+                new Steps.CalculationStep("INITAFS", List.of("ONHAND", "ROHM", "LOST", "OOBADJ"),
+                        inputs -> inputs.get("ONHAND")
+                                .subtract(inputs.get("ROHM"))
+                                .subtract(inputs.get("LOST"))
+                                .subtract(inputs.get("OOBADJ").max(BigDecimal.ZERO)),
+                        null, null, null, null),
+                Map.of(
+                        CalculationFlow.JEI,
+                        new Steps.CalculationStep("INITAFS", List.of("ONHAND", "LOST"),
+                                inputs -> inputs.get("ONHAND")
+                                        .subtract(inputs.get("LOST")),
+                                null, null, null, null),
+                        CalculationFlow.FRM,
+                        new Steps.CalculationStep("INITAFS", List.of("ONHAND", "ROHM", "LOST", "OOBADJ"),
+                                inputs -> inputs.get("ONHAND")
+                                        .subtract(inputs.get("ROHM"))
+                                        .subtract(inputs.get("LOST"))
+                                        .subtract(inputs.get("OOBADJ").max(BigDecimal.ZERO)),
+                                null, null, null, null)
+                ),
+//                new Steps.ContextConditionStep("INITAFS", List.of(),
+//                        ctx -> ctx.get("_flowResult_JEI_INITAFS").compareTo(BigDecimal.ZERO) > 0
+//                                && ctx.get("_flowResult_JEI_INITAFS").compareTo(ctx.get("_flowResult_OMS_INITAFS")) != 0
+//                                ? ctx.get("_flowResult_JEI_INITAFS") : ctx.get("_flowResult_OMS_INITAFS")
+//                ),
+                null,
+                false);
+
 
         engine.addStep("SNB",
                 new Steps.SkulocFieldStep("SNB"),
@@ -201,33 +231,6 @@ public class ReserveCalculationEngine {
                         CalculationFlow.FRM, new Steps.SkulocFieldStep("NEED")),
                 null, false);
 
-        // Initial AFS Calculation (INITAFS) with alternate flow for JEI
-        engine.addStep("INITAFS",
-                new Steps.CalculationStep("INITAFS", List.of("ONHAND", "ROHM", "LOST", "OOBADJ"),
-                        inputs -> inputs.get("ONHAND")
-                                .subtract(inputs.get("ROHM"))
-                                .subtract(inputs.get("LOST"))
-                                .subtract(inputs.get("OOBADJ").max(BigDecimal.ZERO)),
-                        null, null, null, null),
-                Map.of(
-                        CalculationFlow.JEI,
-                        new Steps.CalculationStep("INITAFS", List.of("ONHAND", "LOST"),
-                                inputs -> inputs.get("ONHAND")
-                                        .subtract(inputs.get("LOST")),
-                                null, null, null, null),
-                        CalculationFlow.FRM,
-                        new Steps.CalculationStep("INITAFS", List.of("ONHAND", "ROHM", "LOST", "OOBADJ"),
-                                inputs -> inputs.get("ONHAND")
-                                        .subtract(inputs.get("ROHM"))
-                                        .subtract(inputs.get("LOST"))
-                                        .subtract(inputs.get("OOBADJ").max(BigDecimal.ZERO)),
-                                null, null, null, null)
-                ),
-                new Steps.ContextConditionStep("INITAFS", List.of(),
-                        ctx -> ctx.get("_flowResult_JEI_INITAFS").compareTo(BigDecimal.ZERO) > 0
-                                && ctx.get("_flowResult_JEI_INITAFS").compareTo(ctx.get("_flowResult_OMS_INITAFS")) != 0
-                                ? ctx.get("_flowResult_JEI_INITAFS") : ctx.get("_flowResult_OMS_INITAFS")
-                ), false);
 
         // Constraint and Derived Steps
         engine.addStep("SNBX",
