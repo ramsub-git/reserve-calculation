@@ -15,16 +15,16 @@ public class ReserveCalcContext {
     private InitialValueWrapper initialValueWrapper;
 
     // Holds final calculated values per field name
-    private final Map<String, BigDecimal> fieldValues = new LinkedHashMap<>();
+    private final Map<ReserveField, BigDecimal> fieldValues = new LinkedHashMap<>();
 
     // Per step row index, per flow snapshots
     private final Map<Integer, Map<CalculationFlow, ReserveCalcStep>> stepSnapshots = new HashMap<>();
 
     // Dynamic step values (latest)
-    private final Map<String, BigDecimal> dynamicValues = new HashMap<>();
+    private final Map<ReserveField, BigDecimal> dynamicValues = new HashMap<>();
 
     // Running total history per field
-    private final Map<String, List<BigDecimal>> runningTotalHistory = new HashMap<>();
+    private final Map<ReserveField, List<BigDecimal>> runningTotalHistory = new HashMap<>();
 
     private List<ReserveCalcStep> dynamicSteps = new ArrayList<>();
 
@@ -44,16 +44,16 @@ public class ReserveCalcContext {
         return dynamicSteps;
     }
 
-    public void put(String field, BigDecimal value) {
+    public void put(ReserveField field, BigDecimal value) {
         fieldValues.put(field, value);
         runningTotalHistory.computeIfAbsent(field, k -> new ArrayList<>()).add(value);
     }
 
-    public BigDecimal get(String field) {
+    public BigDecimal get(ReserveField field) {
         return fieldValues.getOrDefault(field, BigDecimal.ZERO);
     }
 
-    public Map<String, BigDecimal> getAll() {
+    public Map<ReserveField, BigDecimal> getAll() {
         return Collections.unmodifiableMap(fieldValues);
     }
 
@@ -143,11 +143,11 @@ public class ReserveCalcContext {
         return stepSnapshots;
     }
 
-    public Map<String, List<BigDecimal>> getRunningTotalHistory() {
+    public Map<ReserveField, List<BigDecimal>> getRunningTotalHistory() {
         return runningTotalHistory;
     }
 
-    public Map<String, BigDecimal> getDynamicValues() {
+    public Map<ReserveField, BigDecimal> getDynamicValues() {
         return dynamicValues;
     }
 }

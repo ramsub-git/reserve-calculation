@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.*;
 
+import static com.sephora.ism.reserve.ReserveField.*;
+
 /**
  * ReserveCalculationEngine manages flow setup and calculation execution.
  * - Holds step lists per flow.
@@ -13,7 +15,7 @@ import java.util.function.*;
 public class ReserveCalculationEngine {
 
     private final Map<CalculationFlow, List<ReserveCalcStep>> flowSteps = new EnumMap<>(CalculationFlow.class);
-    private final Map<String, ReserveCalcStep> contextConditionSteps = new HashMap<>();
+    private final Map<ReserveField, ReserveCalcStep> contextConditionSteps = new HashMap<>();
     private final List<ReserveCalcStep> dynamicSteps = new ArrayList<>();
     private Predicate<ReserveCalcContext> enginePreCheck = ctx -> true;
     private Predicate<ReserveCalcContext> enginePostCheck = ctx -> true;
@@ -24,7 +26,7 @@ public class ReserveCalculationEngine {
         }
     }
 
-    public void addStep(String fieldName, ReserveCalcStep mainStep, Map<CalculationFlow, ReserveCalcStep> alternateSteps, ReserveCalcStep contextConditionStep, boolean isDynamic) {
+    public void addStep(ReserveField fieldName, ReserveCalcStep mainStep, Map<CalculationFlow, ReserveCalcStep> alternateSteps, ReserveCalcStep contextConditionStep, boolean isDynamic) {
         for (CalculationFlow flow : CalculationFlow.values()) {
             ReserveCalcStep stepForFlow = (alternateSteps != null && alternateSteps.containsKey(flow))
                     ? alternateSteps.get(flow).copy()
@@ -63,7 +65,7 @@ public class ReserveCalculationEngine {
                 currentSteps.put(flow, steps.get(stepIndex));
             }
 
-            String fieldName = currentSteps.get(CalculationFlow.OMS).getFieldName();
+            ReserveField fieldName = currentSteps.get(CalculationFlow.OMS).getFieldName();
             ReserveCalcStep contextConditionStep = contextConditionSteps.get(fieldName);
 
             context.calculateSteps(stepIndex, currentSteps, contextConditionStep);
@@ -86,68 +88,68 @@ public class ReserveCalculationEngine {
     // Converted setupReserveCalculationSteps method with field name lookups
     public static void setupReserveCalculationSteps(ReserveCalculationEngine engine) {
         // Base Key Fields
-        engine.addStep("DIV",
-                new Steps.ConstantStep("DIV", new BigDecimal("30")),
+        engine.addStep(DIV,
+                new Steps.ConstantStep(DIV, new BigDecimal("30")),
                 Map.of(), null, false);
 
         // Base SKULOC Input Fields
-        engine.addStep("BYCL",
-                new Steps.SkulocFieldStep("BYCL"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("BYCL"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("BYCL")),
+        engine.addStep(ReserveField.BYCL,
+                new Steps.SkulocFieldStep(ReserveField.BYCL),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.BYCL),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.BYCL)),
                 null, false);
 
-        engine.addStep("SKUSTS",
-                new Steps.SkulocFieldStep("SKUSTS"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("SKUSTS"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("SKUSTS")),
+        engine.addStep(ReserveField.SKUSTS,
+                new Steps.SkulocFieldStep(ReserveField.SKUSTS),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.SKUSTS),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.SKUSTS)),
                 null, false);
 
-        engine.addStep("ONHAND",
-                new Steps.SkulocFieldStep("ONHAND"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("ONHAND"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("ONHAND")),
+        engine.addStep(ReserveField.ONHAND,
+                new Steps.SkulocFieldStep(ReserveField.ONHAND),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.ONHAND),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.ONHAND)),
                 null, false);
 
-        engine.addStep("ROHM",
-                new Steps.SkulocFieldStep("ROHM"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("ROHM"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("ROHM")),
+        engine.addStep(ReserveField.ROHM,
+                new Steps.SkulocFieldStep(ReserveField.ROHM),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.ROHM),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.ROHM)),
                 null, false);
 
-        engine.addStep("LOST",
-                new Steps.SkulocFieldStep("LOST"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("LOST"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("LOST")),
+        engine.addStep(ReserveField.LOST,
+                new Steps.SkulocFieldStep(ReserveField.LOST),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.LOST),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.LOST)),
                 null, false);
 
-        engine.addStep("OOBADJ",
-                new Steps.SkulocFieldStep("OOBADJ"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("OOBADJ"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("OOBADJ")),
+        engine.addStep(ReserveField.OOBADJ,
+                new Steps.SkulocFieldStep(ReserveField.OOBADJ),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.OOBADJ),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.OOBADJ)),
                 null, false);
 
 
         // Initial AFS Calculation (INITAFS) with alternate flow for JEI
-        engine.addStep("INITAFS",
-                new Steps.CalculationStep("INITAFS", List.of("ONHAND", "ROHM", "LOST", "OOBADJ"),
-                        inputs -> inputs.get("ONHAND")
-                                .subtract(inputs.get("ROHM"))
-                                .subtract(inputs.get("LOST"))
-                                .subtract(inputs.get("OOBADJ").max(BigDecimal.ZERO)),
+        engine.addStep(ReserveField.INITAFS,
+                new Steps.CalculationStep(ReserveField.INITAFS, List.of(ReserveField.ONHAND, ReserveField.ROHM, ReserveField.LOST, ReserveField.OOBADJ),
+                        inputs -> inputs.get(ReserveField.ONHAND)
+                                .subtract(inputs.get(ReserveField.ROHM))
+                                .subtract(inputs.get(ReserveField.LOST))
+                                .subtract(inputs.get(ReserveField.OOBADJ).max(BigDecimal.ZERO)),
                         null, null, null, null),
                 Map.of(
                         CalculationFlow.JEI,
-                        new Steps.CalculationStep("INITAFS", List.of("ONHAND", "LOST"),
-                                inputs -> inputs.get("ONHAND")
-                                        .subtract(inputs.get("LOST")),
+                        new Steps.CalculationStep(ReserveField.INITAFS, List.of(ReserveField.ONHAND, ReserveField.LOST),
+                                inputs -> inputs.get(ReserveField.ONHAND)
+                                        .subtract(inputs.get(ReserveField.LOST)),
                                 null, null, null, null),
                         CalculationFlow.FRM,
-                        new Steps.CalculationStep("INITAFS", List.of("ONHAND", "ROHM", "LOST", "OOBADJ"),
-                                inputs -> inputs.get("ONHAND")
-                                        .subtract(inputs.get("ROHM"))
-                                        .subtract(inputs.get("LOST"))
-                                        .subtract(inputs.get("OOBADJ").max(BigDecimal.ZERO)),
+                        new Steps.CalculationStep(ReserveField.INITAFS, List.of(ReserveField.ONHAND, ReserveField.ROHM, ReserveField.LOST, ReserveField.OOBADJ),
+                                inputs -> inputs.get(ReserveField.ONHAND)
+                                        .subtract(inputs.get(ReserveField.ROHM))
+                                        .subtract(inputs.get(ReserveField.LOST))
+                                        .subtract(inputs.get(ReserveField.OOBADJ).max(BigDecimal.ZERO)),
                                 null, null, null, null)
                 ),
 //                new Steps.ContextConditionStep("INITAFS", List.of(),
@@ -159,160 +161,160 @@ public class ReserveCalculationEngine {
                 false);
 
 
-        engine.addStep("SNB",
-                new Steps.SkulocFieldStep("SNB"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("SNB"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("SNB")),
+        engine.addStep(ReserveField.SNB,
+                new Steps.SkulocFieldStep(ReserveField.SNB),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.SNB),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.SNB)),
                 null, false);
 
-        engine.addStep("DTCO",
-                new Steps.SkulocFieldStep("DTCO"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("DTCO"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("DTCO")),
+        engine.addStep(ReserveField.DTCO,
+                new Steps.SkulocFieldStep(ReserveField.DTCO),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.DTCO),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.DTCO)),
                 null, false);
 
-        engine.addStep("ROHP",
-                new Steps.SkulocFieldStep("ROHP"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("ROHP"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("ROHP")),
+        engine.addStep(ReserveField.ROHP,
+                new Steps.SkulocFieldStep(ReserveField.ROHP),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.ROHP),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.ROHP)),
                 null, false);
 
-        engine.addStep("DOTHRY",
-                new Steps.SkulocFieldStep("DOTHRY"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("DOTHRY"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("DOTHRY")),
+        engine.addStep(ReserveField.DOTHRY,
+                new Steps.SkulocFieldStep(ReserveField.DOTHRY),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.DOTHRY),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.DOTHRY)),
                 null, false);
 
-        engine.addStep("DOTHRN",
-                new Steps.SkulocFieldStep("DOTHRN"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("DOTHRN"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("DOTHRN")),
+        engine.addStep(ReserveField.DOTHRN,
+                new Steps.SkulocFieldStep(ReserveField.DOTHRN),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.DOTHRN),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.DOTHRN)),
                 null, false);
 
-        engine.addStep("RETHRY",
-                new Steps.SkulocFieldStep("RETHRY"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("RETHRY"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("RETHRY")),
+        engine.addStep(ReserveField.RETHRY,
+                new Steps.SkulocFieldStep(ReserveField.RETHRY),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.RETHRY),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.RETHRY)),
                 null, false);
 
-        engine.addStep("RETHRN",
-                new Steps.SkulocFieldStep("RETHRN"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("RETHRN"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("RETHRN")),
+        engine.addStep(ReserveField.RETHRN,
+                new Steps.SkulocFieldStep(ReserveField.RETHRN),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.RETHRN),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.RETHRN)),
                 null, false);
 
-        engine.addStep("HLDHR",
-                new Steps.SkulocFieldStep("HLDHR"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("HLDHR"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("HLDHR")),
+        engine.addStep(ReserveField.HLDHR,
+                new Steps.SkulocFieldStep(ReserveField.HLDHR),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.HLDHR),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.HLDHR)),
                 null, false);
 
-        engine.addStep("DOTRSV",
-                new Steps.SkulocFieldStep("DOTRSV"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("DOTRSV"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("DOTRSV")),
+        engine.addStep(ReserveField.DOTRSV,
+                new Steps.SkulocFieldStep(ReserveField.DOTRSV),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.DOTRSV),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.DOTRSV)),
                 null, false);
 
-        engine.addStep("RETRSV",
-                new Steps.SkulocFieldStep("RETRSV"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("RETRSV"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("RETRSV")),
+        engine.addStep(ReserveField.RETRSV,
+                new Steps.SkulocFieldStep(ReserveField.RETRSV),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.RETRSV),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.RETRSV)),
                 null, false);
 
-        engine.addStep("DOTOUTB",
-                new Steps.SkulocFieldStep("DOTOUTB"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("DOTOUTB"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("DOTOUTB")),
+        engine.addStep(ReserveField.DOTOUTB,
+                new Steps.SkulocFieldStep(ReserveField.DOTOUTB),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.DOTOUTB),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.DOTOUTB)),
                 null, false);
 
-        engine.addStep("NEED",
-                new Steps.SkulocFieldStep("NEED"),
-                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep("NEED"),
-                        CalculationFlow.FRM, new Steps.SkulocFieldStep("NEED")),
+        engine.addStep(ReserveField.NEED,
+                new Steps.SkulocFieldStep(ReserveField.NEED),
+                Map.of(CalculationFlow.JEI, new Steps.SkulocFieldStep(ReserveField.NEED),
+                        CalculationFlow.FRM, new Steps.SkulocFieldStep(ReserveField.NEED)),
                 null, false);
 
 
         // Constraint and Derived Steps
-        engine.addStep("SNBX",
-                new Steps.CalculationStep("SNBX", List.of("INITAFS", "SNB"),
+        engine.addStep(ReserveField.SNBX,
+                new Steps.CalculationStep(ReserveField.SNBX, List.of(ReserveField.INITAFS, ReserveField.SNB),
                         inputs -> {
-                            BigDecimal afs = inputs.get("INITAFS");
-                            BigDecimal snb = inputs.get("SNB");
+                            BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                            BigDecimal snb = inputs.get(ReserveField.SNB);
                             return afs.compareTo(BigDecimal.ZERO) > 0 && snb.compareTo(afs) > 0 ? afs : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("SNBX", List.of("INITAFS", "SNB"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.SNBX, List.of(ReserveField.INITAFS, ReserveField.SNB),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
-                                    BigDecimal snb = inputs.get("SNB");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                                    BigDecimal snb = inputs.get(ReserveField.SNB);
                                     return afs.compareTo(BigDecimal.ZERO) > 0 && snb.compareTo(afs) > 0 ? afs : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("SNBX", List.of("INITAFS", "SNB"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.SNBX, List.of(ReserveField.INITAFS, ReserveField.SNB),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
-                                    BigDecimal snb = inputs.get("SNB");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                                    BigDecimal snb = inputs.get(ReserveField.SNB);
                                     return afs.compareTo(BigDecimal.ZERO) > 0 && snb.compareTo(afs) > 0 ? afs : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("DTCOX",
-                new Steps.CalculationStep("DTCOX", List.of("INITAFS", "SNB", "DTCO"),
+        engine.addStep(ReserveField.DTCOX,
+                new Steps.CalculationStep(ReserveField.DTCOX, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO),
                         inputs -> {
-                            BigDecimal afs = inputs.get("INITAFS");
-                            BigDecimal snb = inputs.get("SNB");
-                            BigDecimal dtco = inputs.get("DTCO");
+                            BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                            BigDecimal snb = inputs.get(ReserveField.SNB);
+                            BigDecimal dtco = inputs.get(ReserveField.DTCO);
                             BigDecimal leftover1 = afs.subtract(snb).max(BigDecimal.ZERO);
                             return leftover1.compareTo(dtco) < 0 ? leftover1 : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("DTCOX", List.of("INITAFS", "SNB", "DTCO"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.DTCOX, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
-                                    BigDecimal snb = inputs.get("SNB");
-                                    BigDecimal dtco = inputs.get("DTCO");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                                    BigDecimal snb = inputs.get(ReserveField.SNB);
+                                    BigDecimal dtco = inputs.get(ReserveField.DTCO);
                                     BigDecimal leftover1 = afs.subtract(snb).max(BigDecimal.ZERO);
                                     return leftover1.compareTo(dtco) < 0 ? leftover1 : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("DTCOX", List.of("INITAFS", "SNB", "DTCO"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.DTCOX, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
-                                    BigDecimal snb = inputs.get("SNB");
-                                    BigDecimal dtco = inputs.get("DTCO");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                                    BigDecimal snb = inputs.get(ReserveField.SNB);
+                                    BigDecimal dtco = inputs.get(ReserveField.DTCO);
                                     BigDecimal leftover1 = afs.subtract(snb).max(BigDecimal.ZERO);
                                     return leftover1.compareTo(dtco) < 0 ? leftover1 : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("ROHPX",
-                new Steps.CalculationStep("ROHPX", List.of("INITAFS", "SNB", "DTCO", "ROHP"),
+        engine.addStep(ReserveField.ROHPX,
+                new Steps.CalculationStep(ReserveField.ROHPX, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO, ReserveField.ROHP),
                         inputs -> {
-                            BigDecimal afs = inputs.get("INITAFS");
-                            BigDecimal snb = inputs.get("SNB");
-                            BigDecimal dtco = inputs.get("DTCO");
-                            BigDecimal rohp = inputs.get("ROHP");
+                            BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                            BigDecimal snb = inputs.get(ReserveField.SNB);
+                            BigDecimal dtco = inputs.get(ReserveField.DTCO);
+                            BigDecimal rohp = inputs.get(ReserveField.ROHP);
                             BigDecimal leftover1 = afs.subtract(snb).max(BigDecimal.ZERO);
                             BigDecimal leftover2 = leftover1.compareTo(dtco) < 0 ? BigDecimal.ZERO : leftover1.subtract(dtco);
                             return leftover2.compareTo(rohp) < 0 ? leftover2 : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("ROHPX", List.of("INITAFS", "SNB", "DTCO", "ROHP"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.ROHPX, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO, ReserveField.ROHP),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
-                                    BigDecimal snb = inputs.get("SNB");
-                                    BigDecimal dtco = inputs.get("DTCO");
-                                    BigDecimal rohp = inputs.get("ROHP");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                                    BigDecimal snb = inputs.get(ReserveField.SNB);
+                                    BigDecimal dtco = inputs.get(ReserveField.DTCO);
+                                    BigDecimal rohp = inputs.get(ReserveField.ROHP);
                                     BigDecimal leftover1 = afs.subtract(snb).max(BigDecimal.ZERO);
                                     BigDecimal leftover2 = leftover1.compareTo(dtco) < 0 ? BigDecimal.ZERO : leftover1.subtract(dtco);
                                     return leftover2.compareTo(rohp) < 0 ? leftover2 : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("ROHPX", List.of("INITAFS", "SNB", "DTCO", "ROHP"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.ROHPX, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO, ReserveField.ROHP),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
-                                    BigDecimal snb = inputs.get("SNB");
-                                    BigDecimal dtco = inputs.get("DTCO");
-                                    BigDecimal rohp = inputs.get("ROHP");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                                    BigDecimal snb = inputs.get(ReserveField.SNB);
+                                    BigDecimal dtco = inputs.get(ReserveField.DTCO);
+                                    BigDecimal rohp = inputs.get(ReserveField.ROHP);
                                     BigDecimal leftover1 = afs.subtract(snb).max(BigDecimal.ZERO);
                                     BigDecimal leftover2 = leftover1.compareTo(dtco) < 0 ? BigDecimal.ZERO : leftover1.subtract(dtco);
                                     return leftover2.compareTo(rohp) < 0 ? leftover2 : BigDecimal.ZERO;
@@ -320,599 +322,600 @@ public class ReserveCalculationEngine {
                 ),
                 null, false);
 
-        engine.addStep("UNCOMAFS",
-                new Steps.CalculationStep("UNCOMAFS", List.of("INITAFS", "SNB", "DTCO", "ROHP"),
+        engine.addStep(ReserveField.UNCOMAFS,
+                new Steps.CalculationStep(ReserveField.UNCOMAFS, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO, ReserveField.ROHP),
                         inputs -> {
-                            BigDecimal result = inputs.get("INITAFS").subtract(inputs.get("SNB"))
-                                    .subtract(inputs.get("DTCO")).subtract(inputs.get("ROHP"));
+                            BigDecimal result = inputs.get(ReserveField.INITAFS).subtract(inputs.get(ReserveField.SNB))
+                                    .subtract(inputs.get(ReserveField.DTCO)).subtract(inputs.get(ReserveField.ROHP));
                             return result.max(BigDecimal.ZERO);
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("UNCOMAFS", List.of("INITAFS", "SNB", "DTCO", "ROHP"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.UNCOMAFS, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO, ReserveField.ROHP),
                                 inputs -> {
-                                    BigDecimal result = inputs.get("INITAFS").subtract(inputs.get("SNB"))
-                                            .subtract(inputs.get("DTCO")).subtract(inputs.get("ROHP"));
+                                    BigDecimal result = inputs.get(ReserveField.INITAFS).subtract(inputs.get(ReserveField.SNB))
+                                            .subtract(inputs.get(ReserveField.DTCO)).subtract(inputs.get(ReserveField.ROHP));
                                     return result.max(BigDecimal.ZERO);
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("UNCOMAFS", List.of("INITAFS", "SNB", "DTCO", "ROHP"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.UNCOMAFS, List.of(ReserveField.INITAFS, ReserveField.SNB, ReserveField.DTCO, ReserveField.ROHP),
                                 inputs -> {
-                                    BigDecimal result = inputs.get("INITAFS").subtract(inputs.get("SNB"))
-                                            .subtract(inputs.get("DTCO")).subtract(inputs.get("ROHP"));
+                                    BigDecimal result = inputs.get(ReserveField.INITAFS).subtract(inputs.get(ReserveField.SNB))
+                                            .subtract(inputs.get(ReserveField.DTCO)).subtract(inputs.get(ReserveField.ROHP));
                                     return result.max(BigDecimal.ZERO);
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("DOTHRYX",
-                new Steps.CalculationStep("DOTHRYX", List.of("UNCOMAFS", "DOTHRY"),
+        engine.addStep(ReserveField.DOTHRYX,
+                new Steps.CalculationStep(ReserveField.DOTHRYX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY),
                         inputs -> {
-                            BigDecimal left = inputs.get("UNCOMAFS");
-                            BigDecimal dty = inputs.get("DOTHRY");
+                            BigDecimal left = inputs.get(ReserveField.UNCOMAFS);
+                            BigDecimal dty = inputs.get(ReserveField.DOTHRY);
                             return left.compareTo(dty) < 0 ? left : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("DOTHRYX", List.of("UNCOMAFS", "DOTHRY"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.DOTHRYX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY),
                                 inputs -> {
-                                    BigDecimal left = inputs.get("UNCOMAFS");
-                                    BigDecimal dty = inputs.get("DOTHRY");
+                                    BigDecimal left = inputs.get(ReserveField.UNCOMAFS);
+                                    BigDecimal dty = inputs.get(ReserveField.DOTHRY);
                                     return left.compareTo(dty) < 0 ? left : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("DOTHRYX", List.of("UNCOMAFS", "DOTHRY"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.DOTHRYX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY),
                                 inputs -> {
-                                    BigDecimal left = inputs.get("UNCOMAFS");
-                                    BigDecimal dty = inputs.get("DOTHRY");
+                                    BigDecimal left = inputs.get(ReserveField.UNCOMAFS);
+                                    BigDecimal dty = inputs.get(ReserveField.DOTHRY);
                                     return left.compareTo(dty) < 0 ? left : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("DOTHRNX",
-                new Steps.CalculationStep("DOTHRNX", List.of("UNCOMAFS", "DOTHRY", "DOTHRN"),
+        engine.addStep(ReserveField.DOTHRNX,
+                new Steps.CalculationStep(ReserveField.DOTHRNX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRN),
                         inputs -> {
-                            BigDecimal left3 = inputs.get("UNCOMAFS").subtract(inputs.get("DOTHRY")).max(BigDecimal.ZERO);
-                            BigDecimal dtn = inputs.get("DOTHRN");
+                            BigDecimal left3 = inputs.get(ReserveField.UNCOMAFS).subtract(inputs.get(ReserveField.DOTHRY)).max(BigDecimal.ZERO);
+                            BigDecimal dtn = inputs.get(ReserveField.DOTHRN);
                             return left3.compareTo(dtn) < 0 ? left3 : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("DOTHRNX", List.of("UNCOMAFS", "DOTHRY", "DOTHRN"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.DOTHRNX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRN),
                                 inputs -> {
-                                    BigDecimal left3 = inputs.get("UNCOMAFS").subtract(inputs.get("DOTHRY")).max(BigDecimal.ZERO);
-                                    BigDecimal dtn = inputs.get("DOTHRN");
+                                    BigDecimal left3 = inputs.get(ReserveField.UNCOMAFS).subtract(inputs.get(ReserveField.DOTHRY)).max(BigDecimal.ZERO);
+                                    BigDecimal dtn = inputs.get(ReserveField.DOTHRN);
                                     return left3.compareTo(dtn) < 0 ? left3 : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("DOTHRNX", List.of("UNCOMAFS", "DOTHRY", "DOTHRN"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.DOTHRNX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRN),
                                 inputs -> {
-                                    BigDecimal left3 = inputs.get("UNCOMAFS").subtract(inputs.get("DOTHRY")).max(BigDecimal.ZERO);
-                                    BigDecimal dtn = inputs.get("DOTHRN");
+                                    BigDecimal left3 = inputs.get(ReserveField.UNCOMAFS).subtract(inputs.get(ReserveField.DOTHRY)).max(BigDecimal.ZERO);
+                                    BigDecimal dtn = inputs.get(ReserveField.DOTHRN);
                                     return left3.compareTo(dtn) < 0 ? left3 : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("RETHRYX",
-                new Steps.CalculationStep("RETHRYX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY"),
+        engine.addStep(ReserveField.RETHRYX,
+                new Steps.CalculationStep(ReserveField.RETHRYX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY),
                         inputs -> {
-                            BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal leftAfterDot = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
-                            BigDecimal rhy = inputs.get("RETHRY");
+                            BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal leftAfterDot = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
+                            BigDecimal rhy = inputs.get(ReserveField.RETHRY);
                             return leftAfterDot.compareTo(rhy) < 0 ? leftAfterDot : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("RETHRYX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.RETHRYX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal leftAfterDot = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
-                                    BigDecimal rhy = inputs.get("RETHRY");
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal leftAfterDot = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
+                                    BigDecimal rhy = inputs.get(ReserveField.RETHRY);
                                     return leftAfterDot.compareTo(rhy) < 0 ? leftAfterDot : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("RETHRYX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.RETHRYX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal leftAfterDot = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
-                                    BigDecimal rhy = inputs.get("RETHRY");
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal leftAfterDot = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
+                                    BigDecimal rhy = inputs.get(ReserveField.RETHRY);
                                     return leftAfterDot.compareTo(rhy) < 0 ? leftAfterDot : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("RETHRNX",
-                new Steps.CalculationStep("RETHRNX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN"),
+        engine.addStep(ReserveField.RETHRNX,
+                new Steps.CalculationStep(ReserveField.RETHRNX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN),
                         inputs -> {
-                            BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal leftAfterDot = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
-                            BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
+                            BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal leftAfterDot = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
+                            BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
                             BigDecimal leftAfterRHY = leftAfterDot.subtract(rethryAct).max(BigDecimal.ZERO);
-                            BigDecimal rhn = inputs.get("RETHRN");
+                            BigDecimal rhn = inputs.get(ReserveField.RETHRN);
                             return leftAfterRHY.compareTo(rhn) < 0 ? leftAfterRHY : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("RETHRNX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.RETHRNX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal leftAfterDot = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal leftAfterDot = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
                                     BigDecimal leftAfterRHY = leftAfterDot.subtract(rethryAct).max(BigDecimal.ZERO);
-                                    BigDecimal rhn = inputs.get("RETHRN");
+                                    BigDecimal rhn = inputs.get(ReserveField.RETHRN);
                                     return leftAfterRHY.compareTo(rhn) < 0 ? leftAfterRHY : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("RETHRNX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.RETHRNX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal leftAfterDot = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal leftAfterDot = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct).max(BigDecimal.ZERO);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
                                     BigDecimal leftAfterRHY = leftAfterDot.subtract(rethryAct).max(BigDecimal.ZERO);
-                                    BigDecimal rhn = inputs.get("RETHRN");
+                                    BigDecimal rhn = inputs.get(ReserveField.RETHRN);
                                     return leftAfterRHY.compareTo(rhn) < 0 ? leftAfterRHY : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("HLDHRX",
-                new Steps.CalculationStep("HLDHRX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR"),
+        engine.addStep(ReserveField.HLDHRX,
+                new Steps.CalculationStep(ReserveField.HLDHRX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR),
                         inputs -> {
-                            BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                            BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                            BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                            BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                            BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                            BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                     .subtract(rethryAct).subtract(rethrnAct).max(BigDecimal.ZERO);
-                            BigDecimal hld = inputs.get("HLDHR");
+                            BigDecimal hld = inputs.get(ReserveField.HLDHR);
                             return leftAfterRes.compareTo(hld) < 0 ? leftAfterRes : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("HLDHRX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.HLDHRX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).max(BigDecimal.ZERO);
-                                    BigDecimal hld = inputs.get("HLDHR");
+                                    BigDecimal hld = inputs.get(ReserveField.HLDHR);
+
                                     return leftAfterRes.compareTo(hld) < 0 ? leftAfterRes : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("HLDHRX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.HLDHRX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).max(BigDecimal.ZERO);
-                                    BigDecimal hld = inputs.get("HLDHR");
+                                    BigDecimal hld = inputs.get(ReserveField.HLDHR);
                                     return leftAfterRes.compareTo(hld) < 0 ? leftAfterRes : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("DOTRSVX",
-                new Steps.CalculationStep("DOTRSVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV"),
+        engine.addStep(ReserveField.DOTRSVX,
+                new Steps.CalculationStep(ReserveField.DOTRSVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV),
                         inputs -> {
-                            BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                            BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                            BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                            BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                            BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                            BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                            BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                            BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                     .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct).max(BigDecimal.ZERO);
-                            BigDecimal drsv = inputs.get("DOTRSV");
+                            BigDecimal drsv = inputs.get(ReserveField.DOTRSV);
                             return leftAfterRes.compareTo(drsv) < 0 ? leftAfterRes : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("DOTRSVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.DOTRSVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct).max(BigDecimal.ZERO);
-                                    BigDecimal drsv = inputs.get("DOTRSV");
+                                    BigDecimal drsv = inputs.get(ReserveField.DOTRSV);
                                     return leftAfterRes.compareTo(drsv) < 0 ? leftAfterRes : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("DOTRSVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.DOTRSVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct).max(BigDecimal.ZERO);
-                                    BigDecimal drsv = inputs.get("DOTRSV");
+                                    BigDecimal drsv = inputs.get(ReserveField.DOTRSV);
                                     return leftAfterRes.compareTo(drsv) < 0 ? leftAfterRes : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("RETRSVX",
-                new Steps.CalculationStep("RETRSVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV"),
+        engine.addStep(ReserveField.RETRSVX,
+                new Steps.CalculationStep(ReserveField.RETRSVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV),
                         inputs -> {
-                            BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                            BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                            BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                            BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                            BigDecimal leftAfterDotRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                            BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                            BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                            BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                            BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                            BigDecimal leftAfterDotRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                     .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct).subtract(dotrsvAct)
                                     .max(BigDecimal.ZERO);
-                            BigDecimal rrsv = inputs.get("RETRSV");
+                            BigDecimal rrsv = inputs.get(ReserveField.RETRSV);
                             return leftAfterDotRes.compareTo(rrsv) < 0 ? leftAfterDotRes : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("RETRSVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.RETRSVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                                    BigDecimal leftAfterDotRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                                    BigDecimal leftAfterDotRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct).subtract(dotrsvAct)
                                             .max(BigDecimal.ZERO);
-                                    BigDecimal rrsv = inputs.get("RETRSV");
+                                    BigDecimal rrsv = inputs.get(ReserveField.RETRSV);
                                     return leftAfterDotRes.compareTo(rrsv) < 0 ? leftAfterDotRes : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("RETRSVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.RETRSVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                                    BigDecimal leftAfterDotRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                                    BigDecimal leftAfterDotRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct).subtract(dotrsvAct)
                                             .max(BigDecimal.ZERO);
-                                    BigDecimal rrsv = inputs.get("RETRSV");
+                                    BigDecimal rrsv = inputs.get(ReserveField.RETRSV);
                                     return leftAfterDotRes.compareTo(rrsv) < 0 ? leftAfterDotRes : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("AOUTBV",
-                new Steps.CalculationStep("AOUTBV", List.of("DOTOUTB", "@DOTATS"),
+        engine.addStep(ReserveField.AOUTBV,
+                new Steps.CalculationStep(ReserveField.AOUTBV, List.of(ReserveField.DOTOUTB, ReserveField.DOTATS),
                         inputs -> {
-                            BigDecimal diff = inputs.get("DOTOUTB").subtract(inputs.get("@DOTATS"));
+                            BigDecimal diff = inputs.get(ReserveField.DOTOUTB).subtract(inputs.get(ReserveField.DOTATS));
                             return diff.compareTo(BigDecimal.ZERO) > 0 ? diff : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("AOUTBV", List.of("DOTOUTB", "@DOTATS"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.AOUTBV, List.of(ReserveField.DOTOUTB, ReserveField.DOTATS),
                                 inputs -> {
-                                    BigDecimal diff = inputs.get("DOTOUTB").subtract(inputs.get("@DOTATS"));
+                                    BigDecimal diff = inputs.get(ReserveField.DOTOUTB).subtract(inputs.get(ReserveField.DOTATS));
                                     return diff.compareTo(BigDecimal.ZERO) > 0 ? diff : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("AOUTBV", List.of("DOTOUTB", "@DOTATS"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.AOUTBV, List.of(ReserveField.DOTOUTB, ReserveField.DOTATS),
                                 inputs -> {
-                                    BigDecimal diff = inputs.get("DOTOUTB").subtract(inputs.get("@DOTATS"));
+                                    BigDecimal diff = inputs.get(ReserveField.DOTOUTB).subtract(inputs.get(ReserveField.DOTATS));
                                     return diff.compareTo(BigDecimal.ZERO) > 0 ? diff : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("AOUTBVX",
-                new Steps.CalculationStep("AOUTBVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV", "RETRSVX", "AOUTBV"),
+        engine.addStep(ReserveField.AOUTBVX,
+                new Steps.CalculationStep(ReserveField.AOUTBVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV, ReserveField.RETRSVX, ReserveField.AOUTBV),
                         inputs -> {
-                            BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                            BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                            BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                            BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                            BigDecimal retrsvAct = inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV");
-                            BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                            BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRY) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                            BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                            BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                            BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                            BigDecimal retrsvAct = inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV);
+                            BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                     .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct)
                                     .subtract(dotrsvAct).subtract(retrsvAct).max(BigDecimal.ZERO);
-                            BigDecimal abv = inputs.get("AOUTBV");
+                            BigDecimal abv = inputs.get(ReserveField.AOUTBV);
                             return leftAfterRes.compareTo(abv) < 0 ? leftAfterRes : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("AOUTBVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV", "RETRSVX", "AOUTBV"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.AOUTBVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV, ReserveField.RETRSVX, ReserveField.AOUTBV),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                                    BigDecimal retrsvAct = inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV");
-                                    BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                                    BigDecimal retrsvAct = inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV);
+                                    BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct)
                                             .subtract(dotrsvAct).subtract(retrsvAct).max(BigDecimal.ZERO);
-                                    BigDecimal abv = inputs.get("AOUTBV");
+                                    BigDecimal abv = inputs.get(ReserveField.AOUTBV);
                                     return leftAfterRes.compareTo(abv) < 0 ? leftAfterRes : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("AOUTBVX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV", "RETRSVX", "AOUTBV"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.AOUTBVX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV, ReserveField.RETRSVX, ReserveField.AOUTBV),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                                    BigDecimal retrsvAct = inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV");
-                                    BigDecimal leftAfterRes = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                                    BigDecimal retrsvAct = inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV);
+                                    BigDecimal leftAfterRes = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct)
                                             .subtract(dotrsvAct).subtract(retrsvAct).max(BigDecimal.ZERO);
-                                    BigDecimal abv = inputs.get("AOUTBV");
+                                    BigDecimal abv = inputs.get(ReserveField.AOUTBV);
                                     return leftAfterRes.compareTo(abv) < 0 ? leftAfterRes : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("ANEED",
-                new Steps.CalculationStep("ANEED", List.of("NEED", "@RETAILATS"),
+        engine.addStep(ReserveField.ANEED,
+                new Steps.CalculationStep(ReserveField.ANEED, List.of(ReserveField.NEED, ReserveField.RETAILATS),
                         inputs -> {
-                            BigDecimal diff = inputs.get("NEED").subtract(inputs.get("@RETAILATS"));
+                            BigDecimal diff = inputs.get(ReserveField.NEED).subtract(inputs.get(ReserveField.RETAILATS));
                             return diff.compareTo(BigDecimal.ZERO) > 0 ? diff : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("ANEED", List.of("NEED", "@RETAILATS"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.ANEED, List.of(ReserveField.NEED, ReserveField.RETAILATS),
                                 inputs -> {
-                                    BigDecimal diff = inputs.get("NEED").subtract(inputs.get("@RETAILATS"));
+                                    BigDecimal diff = inputs.get(ReserveField.NEED).subtract(inputs.get(ReserveField.RETAILATS));
                                     return diff.compareTo(BigDecimal.ZERO) > 0 ? diff : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("ANEED", List.of("NEED", "@RETAILATS"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.ANEED, List.of(ReserveField.NEED, ReserveField.RETAILATS),
                                 inputs -> {
-                                    BigDecimal diff = inputs.get("NEED").subtract(inputs.get("@RETAILATS"));
+                                    BigDecimal diff = inputs.get(ReserveField.NEED).subtract(inputs.get(ReserveField.RETAILATS));
                                     return diff.compareTo(BigDecimal.ZERO) > 0 ? diff : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("NEEDX",
-                new Steps.CalculationStep("NEEDX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV", "RETRSVX", "AOUTBV", "AOUTBVX", "ANEED"),
+        engine.addStep(ReserveField.NEEDX,
+                new Steps.CalculationStep(ReserveField.NEEDX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV, ReserveField.RETRSVX, ReserveField.AOUTBV, ReserveField.AOUTBVX, ReserveField.ANEED),
                         inputs -> {
-                            BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                            BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                            BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                            BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                            BigDecimal retrsvAct = inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV");
-                            BigDecimal outbAct = inputs.get("AOUTBVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("AOUTBVX") : inputs.get("AOUTBV");
-                            BigDecimal leftAfterOut = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                            BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                            BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                            BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                            BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                            BigDecimal retrsvAct = inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV);
+                            BigDecimal outbAct = inputs.get(ReserveField.AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.AOUTBVX) : inputs.get(ReserveField.AOUTBV);
+                            BigDecimal leftAfterOut = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                     .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct)
                                     .subtract(dotrsvAct).subtract(retrsvAct).subtract(outbAct).max(BigDecimal.ZERO);
-                            BigDecimal need = inputs.get("ANEED");
+                            BigDecimal need = inputs.get(ReserveField.ANEED);
                             return leftAfterOut.compareTo(need) < 0 ? leftAfterOut : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("NEEDX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV", "RETRSVX", "AOUTBV", "AOUTBVX", "ANEED"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.NEEDX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV, ReserveField.RETRSVX, ReserveField.AOUTBV, ReserveField.AOUTBVX, ReserveField.ANEED),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                                    BigDecimal retrsvAct = inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV");
-                                    BigDecimal outbAct = inputs.get("AOUTBVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("AOUTBVX") : inputs.get("AOUTBV");
-                                    BigDecimal leftAfterOut = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                                    BigDecimal retrsvAct = inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV);
+                                    BigDecimal outbAct = inputs.get(ReserveField.AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.AOUTBVX) : inputs.get(ReserveField.AOUTBV);
+                                    BigDecimal leftAfterOut = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct)
                                             .subtract(dotrsvAct).subtract(retrsvAct).subtract(outbAct).max(BigDecimal.ZERO);
-                                    BigDecimal need = inputs.get("ANEED");
+                                    BigDecimal need = inputs.get(ReserveField.ANEED);
                                     return leftAfterOut.compareTo(need) < 0 ? leftAfterOut : BigDecimal.ZERO;
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("NEEDX", List.of("UNCOMAFS", "DOTHRY", "DOTHRYX", "DOTHRN", "DOTHRNX", "RETHRY", "RETHRYX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX", "DOTRSV", "DOTRSVX", "RETRSV", "RETRSVX", "AOUTBV", "AOUTBVX", "ANEED"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.NEEDX, List.of(ReserveField.UNCOMAFS, ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.RETRSV, ReserveField.RETRSVX, ReserveField.AOUTBV, ReserveField.AOUTBVX, ReserveField.ANEED),
                                 inputs -> {
-                                    BigDecimal dotHryAct = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                                    BigDecimal dotHrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    BigDecimal rethryAct = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    BigDecimal dotrsvAct = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                                    BigDecimal retrsvAct = inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV");
-                                    BigDecimal outbAct = inputs.get("AOUTBVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("AOUTBVX") : inputs.get("AOUTBV");
-                                    BigDecimal leftAfterOut = inputs.get("UNCOMAFS").subtract(dotHryAct).subtract(dotHrnAct)
+                                    BigDecimal dotHryAct = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                                    BigDecimal dotHrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    BigDecimal rethryAct = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    BigDecimal dotrsvAct = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                                    BigDecimal retrsvAct = inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV);
+                                    BigDecimal outbAct = inputs.get(ReserveField.AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.AOUTBVX) : inputs.get(ReserveField.AOUTBV);
+                                    BigDecimal leftAfterOut = inputs.get(ReserveField.UNCOMAFS).subtract(dotHryAct).subtract(dotHrnAct)
                                             .subtract(rethryAct).subtract(rethrnAct).subtract(heldAct)
                                             .subtract(dotrsvAct).subtract(retrsvAct).subtract(outbAct).max(BigDecimal.ZERO);
-                                    BigDecimal need = inputs.get("ANEED");
+                                    BigDecimal need = inputs.get(ReserveField.ANEED);
                                     return leftAfterOut.compareTo(need) < 0 ? leftAfterOut : BigDecimal.ZERO;
                                 }, null, null, null, null)
                 ),
                 null, false);
 
         // Dynamic Snapshot Steps
-        engine.addStep("@RETAILATS",
-                new Steps.CalculationStep("@RETAILATS", List.of("RETHRY", "RETHRYX", "RETRSV", "RETRSVX", "ANEED", "NEEDX"),
+        engine.addStep(ReserveField.RETAILATS,
+                new Steps.CalculationStep(ReserveField.RETAILATS, List.of(ReserveField.RETHRY, ReserveField.RETHRYX, ReserveField.RETRSV, ReserveField.RETRSVX, ReserveField.ANEED, ReserveField.NEEDX),
                         inputs -> {
-                            BigDecimal retHardYes = inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY");
-                            BigDecimal retRes = inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV");
-                            BigDecimal adjNeed = inputs.get("NEEDX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("NEEDX") : inputs.get("ANEED");
+                            BigDecimal retHardYes = inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY);
+                            BigDecimal retRes = inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV);
+                            BigDecimal adjNeed = inputs.get(ReserveField.NEEDX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.NEEDX) : inputs.get(ReserveField.ANEED);
                             return retHardYes.add(retRes).add(adjNeed);
                         }, null, null, null, null),
                 Map.of(), null, true);
 
-        engine.addStep("@DOTATS",
-                new Steps.CalculationStep("@DOTATS", List.of("DOTHRY", "DOTHRYX", "DOTRSV", "DOTRSVX", "AOUTBV", "AOUTBVX"),
+        engine.addStep(ReserveField.DOTATS,
+                new Steps.CalculationStep(ReserveField.DOTATS, List.of(ReserveField.DOTHRY, ReserveField.DOTHRYX, ReserveField.DOTRSV, ReserveField.DOTRSVX, ReserveField.AOUTBV, ReserveField.AOUTBVX),
                         inputs -> {
-                            BigDecimal dotHardYes = inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY");
-                            BigDecimal dotRes = inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV");
-                            BigDecimal adjOut = inputs.get("AOUTBVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("AOUTBVX") : inputs.get("AOUTBV");
+                            BigDecimal dotHardYes = inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY);
+                            BigDecimal dotRes = inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV);
+                            BigDecimal adjOut = inputs.get(ReserveField.AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.AOUTBVX) : inputs.get(ReserveField.AOUTBV);
                             return dotHardYes.add(dotRes).add(adjOut);
                         }, null, null, null, null),
                 Map.of(), null, true);
 
-        engine.addStep("@UNCOMMIT",
-                new Steps.CalculationStep("@UNCOMMIT", List.of("INITAFS", "@COMMITTED", "@DOTHRYA", "@DOTHRNA", "@RETHRYA", "@RETHRNA", "@HLDHRA", "@DOTRSVA", "@RETRSVA", "@AOUTBVA", "@NEEDA"),
+        engine.addStep(ReserveField.UNCOMMIT,
+                new Steps.CalculationStep(ReserveField.UNCOMMIT, List.of(ReserveField.INITAFS, ReserveField.COMMITTED, ReserveField.DOTHRYA, ReserveField.DOTHRNA, ReserveField.RETHRYA, ReserveField.RETHRNA, ReserveField.HLDHRA, ReserveField.DOTRSVA, ReserveField.RETRSVA, ReserveField.AOUTBVA, ReserveField.NEEDA),
                         inputs -> {
-                            BigDecimal init = inputs.get("INITAFS");
-                            BigDecimal committed = inputs.get("@COMMITTED");
+                            BigDecimal init = inputs.get(ReserveField.INITAFS);
+                            BigDecimal committed = inputs.get(ReserveField.COMMITTED);
                             BigDecimal totalRes = BigDecimal.ZERO;
                             // Sum all the reserve fields
-                            totalRes = totalRes.add(inputs.get("@DOTHRYA"))
-                                    .add(inputs.get("@DOTHRNA"))
-                                    .add(inputs.get("@RETHRYA"))
-                                    .add(inputs.get("@RETHRNA"))
-                                    .add(inputs.get("@HLDHRA"))
-                                    .add(inputs.get("@DOTRSVA"))
-                                    .add(inputs.get("@RETRSVA"))
-                                    .add(inputs.get("@AOUTBVA"))
-                                    .add(inputs.get("@NEEDA"));
+                            totalRes = totalRes.add(inputs.get(ReserveField.DOTHRYA))
+                                    .add(inputs.get(ReserveField.DOTHRNA))
+                                    .add(inputs.get(ReserveField.RETHRYA))
+                                    .add(inputs.get(ReserveField.RETHRNA))
+                                    .add(inputs.get(ReserveField.HLDHRA))
+                                    .add(inputs.get(ReserveField.DOTRSVA))
+                                    .add(inputs.get(ReserveField.RETRSVA))
+                                    .add(inputs.get(ReserveField.AOUTBVA))
+                                    .add(inputs.get(ReserveField.NEEDA));
                             BigDecimal result = init.subtract(committed).subtract(totalRes);
                             return result.max(BigDecimal.ZERO);
                         }, null, null, null, null),
                 Map.of(), null, true);
 
-        engine.addStep("@COMMITTED",
-                new Steps.CalculationStep("@COMMITTED", List.of("SNB", "DTCO", "ROHP"),
-                        inputs -> inputs.get("SNB").add(inputs.get("DTCO")).add(inputs.get("ROHP")),
+        engine.addStep(ReserveField.COMMITTED,
+                new Steps.CalculationStep(ReserveField.COMMITTED, List.of(ReserveField.SNB, ReserveField.DTCO, ReserveField.ROHP),
+                        inputs -> inputs.get(ReserveField.SNB).add(inputs.get(ReserveField.DTCO)).add(inputs.get(ReserveField.ROHP)),
                         null, null, null, null),
                 Map.of(), null, true);
 
-        engine.addStep("@UNCOMMHR",
-                new Steps.CalculationStep("@UNCOMMHR", List.of("DOTHRN", "DOTHRNX", "RETHRN", "RETHRNX", "HLDHR", "HLDHRX"),
+        engine.addStep(ReserveField.UNCOMMHR,
+                new Steps.CalculationStep(ReserveField.UNCOMMHR, List.of(ReserveField.DOTHRN, ReserveField.DOTHRNX, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.HLDHR, ReserveField.HLDHRX),
                         inputs -> {
-                            BigDecimal dotNo = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                            BigDecimal retNo = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                            BigDecimal heldNo = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
+                            BigDecimal dotNo = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                            BigDecimal retNo = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                            BigDecimal heldNo = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
                             return dotNo.add(retNo).add(heldNo);
                         }, null, null, null, null),
                 Map.of(), null, true);
 
         // Final Output Calculation Steps
-        engine.addStep("@OMSSUP",
-                new Steps.CalculationStep("@OMSSUP", List.of("INITAFS", "@DOTATS", "DTCO", "DTCOX"),
+        engine.addStep(ReserveField.OMSSUP,
+                new Steps.CalculationStep(ReserveField.OMSSUP, List.of(ReserveField.INITAFS, ReserveField.DOTATS, ReserveField.DTCO, ReserveField.DTCOX),
                         inputs -> {
-                            BigDecimal afs = inputs.get("INITAFS");
+                            BigDecimal afs = inputs.get(ReserveField.INITAFS);
                             if (afs.compareTo(BigDecimal.ZERO) < 0) return BigDecimal.ZERO;
-                            BigDecimal dtcoAct = inputs.get("DTCOX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DTCOX") : inputs.get("DTCO");
-                            return inputs.get("@DOTATS").add(dtcoAct);
+                            BigDecimal dtcoAct = inputs.get(ReserveField.DTCOX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DTCOX) : inputs.get(ReserveField.DTCO);
+                            return inputs.get(ReserveField.DOTATS).add(dtcoAct);
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("@OMSSUP", List.of("INITAFS", "@DOTATS", "DTCO", "DTCOX", "SNB", "SNBX", "DOTHRN", "DOTHRNX"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.OMSSUP, List.of(ReserveField.INITAFS, ReserveField.DOTATS, ReserveField.DTCO, ReserveField.DTCOX, ReserveField.SNB, ReserveField.SNBX, ReserveField.DOTHRN, ReserveField.DOTHRNX),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
                                     if (afs.compareTo(BigDecimal.ZERO) < 0) return BigDecimal.ZERO;
-                                    BigDecimal dtcoAct = inputs.get("DTCOX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DTCOX") : inputs.get("DTCO");
-                                    BigDecimal snbAct = inputs.get("SNBX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("SNBX") : inputs.get("SNB");
-                                    BigDecimal dhrnAct = inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN");
-                                    return inputs.get("@DOTATS").add(dtcoAct).add(snbAct).add(dhrnAct);
+                                    BigDecimal dtcoAct = inputs.get(ReserveField.DTCOX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DTCOX) : inputs.get(ReserveField.DTCO);
+                                    BigDecimal snbAct = inputs.get(ReserveField.SNBX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.SNBX) : inputs.get(ReserveField.SNB);
+                                    BigDecimal dhrnAct = inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN);
+                                    return inputs.get(ReserveField.DOTATS).add(dtcoAct).add(snbAct).add(dhrnAct);
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("@OMSSUP", List.of("INITAFS", "@DOTATS", "DTCO", "DTCOX"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.OMSSUP, List.of(ReserveField.INITAFS, ReserveField.DOTATS, ReserveField.DTCO, ReserveField.DTCOX),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
                                     if (afs.compareTo(BigDecimal.ZERO) < 0) return BigDecimal.ZERO;
-                                    BigDecimal dtcoAct = inputs.get("DTCOX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DTCOX") : inputs.get("DTCO");
-                                    return inputs.get("@DOTATS").add(dtcoAct);
+                                    BigDecimal dtcoAct = inputs.get(ReserveField.DTCOX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DTCOX) : inputs.get(ReserveField.DTCO);
+                                    return inputs.get(ReserveField.DOTATS).add(dtcoAct);
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("@RETFINAL",
-                new Steps.CalculationStep("@RETFINAL", List.of("INITAFS", "@RETAILATS"),
+        engine.addStep(ReserveField.RETFINAL,
+                new Steps.CalculationStep(ReserveField.RETFINAL, List.of(ReserveField.INITAFS, ReserveField.RETAILATS),
                         inputs -> {
-                            BigDecimal afs = inputs.get("INITAFS");
-                            return afs.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : inputs.get("@RETAILATS");
+                            BigDecimal afs = inputs.get(ReserveField.INITAFS);
+                            return afs.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : inputs.get(ReserveField.RETAILATS);
                         }, null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("@RETFINAL", List.of("INITAFS", "@RETAILATS", "RETHRN", "RETHRNX", "ROHP", "ROHPX", "HLDHR", "HLDHRX"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.RETFINAL, List.of(ReserveField.INITAFS, ReserveField.RETAILATS, ReserveField.RETHRN, ReserveField.RETHRNX, ReserveField.ROHP, ReserveField.ROHPX, ReserveField.HLDHR, ReserveField.HLDHRX),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
                                     if (afs.compareTo(BigDecimal.ZERO) < 0) return afs;
-                                    BigDecimal rethrnAct = inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN");
-                                    BigDecimal rohpAct = inputs.get("ROHPX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("ROHPX") : inputs.get("ROHP");
-                                    BigDecimal heldAct = inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR");
-                                    return inputs.get("@RETAILATS").add(rethrnAct).add(rohpAct).add(heldAct);
+                                    BigDecimal rethrnAct = inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN);
+                                    BigDecimal rohpAct = inputs.get(ReserveField.ROHPX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.ROHPX) : inputs.get(ReserveField.ROHP);
+                                    BigDecimal heldAct = inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR);
+                                    return inputs.get(ReserveField.RETAILATS).add(rethrnAct).add(rohpAct).add(heldAct);
                                 }, null, null, null, null),
-                        CalculationFlow.FRM, new Steps.CalculationStep("@RETFINAL", List.of("INITAFS", "@RETAILATS", "@AOUTBVA"),
+                        CalculationFlow.FRM, new Steps.CalculationStep(ReserveField.RETFINAL, List.of(ReserveField.INITAFS, ReserveField.RETAILATS, ReserveField.AOUTBVA),
                                 inputs -> {
-                                    BigDecimal afs = inputs.get("INITAFS");
+                                    BigDecimal afs = inputs.get(ReserveField.INITAFS);
                                     if (afs.compareTo(BigDecimal.ZERO) < 0) return BigDecimal.ZERO;
-                                    return inputs.get("@RETAILATS").add(inputs.get("@AOUTBVA"));
+                                    return inputs.get(ReserveField.RETAILATS).add(inputs.get(ReserveField.AOUTBVA));
                                 }, null, null, null, null)
                 ),
                 null, false);
 
-        engine.addStep("@OMSFINAL",
-                new Steps.CalculationStep("@OMSFINAL", List.of("@OMSSUP"),
+        engine.addStep(ReserveField.OMSFINAL,
+                new Steps.CalculationStep(ReserveField.OMSFINAL, List.of(ReserveField.OMSSUP),
                         inputs -> BigDecimal.ZERO,
                         null, null, null, null),
                 Map.of(
-                        CalculationFlow.JEI, new Steps.CalculationStep("@OMSFINAL", List.of("@OMSSUP"),
-                                inputs -> inputs.get("@OMSSUP"),
+                        CalculationFlow.JEI, new Steps.CalculationStep(ReserveField.OMSFINAL, List.of(ReserveField.OMSSUP),
+                                inputs -> inputs.get(ReserveField.OMSSUP),
                                 null, null, null, null)
                 ),
                 null, false);
 
         // Actual Value Steps for constrained fields
-        engine.addStep("@SNBA",
-                new Steps.ConstraintStep("@SNBA", "SNB", "INITAFS"),
+        engine.addStep(ReserveField.SNBA,
+                new Steps.ConstraintStep(ReserveField.SNBA, ReserveField.SNB, ReserveField.INITAFS),
                 Map.of(), null, false);
 
-        engine.addStep("@DTCOA",
-                new Steps.CalculationStep("@DTCOA", List.of("DTCO", "DTCOX"),
-                        inputs -> inputs.get("DTCOX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DTCOX") : inputs.get("DTCO"),
+        engine.addStep(ReserveField.DTCOA,
+                new Steps.CalculationStep(ReserveField.DTCOA, List.of(ReserveField.DTCO, ReserveField.DTCOX),
+                        inputs -> inputs.get(ReserveField.DTCOX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DTCOX) : inputs.get(ReserveField.DTCO),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@ROHPA",
-                new Steps.CalculationStep("@ROHPA", List.of("ROHP", "ROHPX"),
-                        inputs -> inputs.get("ROHPX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("ROHPX") : inputs.get("ROHP"),
+        engine.addStep(ReserveField.ROHPA,
+                new Steps.CalculationStep(ReserveField.ROHPA, List.of(ReserveField.ROHP, ReserveField.ROHPX),
+                        inputs -> inputs.get(ReserveField.ROHPX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.ROHPX) : inputs.get(ReserveField.ROHP),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@DOTHRYA",
-                new Steps.CalculationStep("@DOTHRYA", List.of("DOTHRY", "DOTHRYX"),
-                        inputs -> inputs.get("DOTHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRYX") : inputs.get("DOTHRY"),
+        engine.addStep(ReserveField.DOTHRYA,
+                new Steps.CalculationStep(ReserveField.DOTHRYA, List.of(ReserveField.DOTHRY, ReserveField.DOTHRYX),
+                        inputs -> inputs.get(ReserveField.DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRYX) : inputs.get(ReserveField.DOTHRY),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@DOTHRNA",
-                new Steps.CalculationStep("@DOTHRNA", List.of("DOTHRN", "DOTHRNX"),
-                        inputs -> inputs.get("DOTHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTHRNX") : inputs.get("DOTHRN"),
+        engine.addStep(ReserveField.DOTHRNA,
+                new Steps.CalculationStep(ReserveField.DOTHRNA, List.of(ReserveField.DOTHRN, ReserveField.DOTHRNX),
+                        inputs -> inputs.get(ReserveField.DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTHRNX) : inputs.get(ReserveField.DOTHRN),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@RETHRYA",
-                new Steps.CalculationStep("@RETHRYA", List.of("RETHRY", "RETHRYX"),
-                        inputs -> inputs.get("RETHRYX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRYX") : inputs.get("RETHRY"),
+        engine.addStep(ReserveField.RETHRYA,
+                new Steps.CalculationStep(ReserveField.RETHRYA, List.of(ReserveField.RETHRY, ReserveField.RETHRYX),
+                        inputs -> inputs.get(ReserveField.RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRYX) : inputs.get(ReserveField.RETHRY),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@RETHRNA",
-                new Steps.CalculationStep("@RETHRNA", List.of("RETHRN", "RETHRNX"),
-                        inputs -> inputs.get("RETHRNX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETHRNX") : inputs.get("RETHRN"),
+        engine.addStep(ReserveField.RETHRNA,
+                new Steps.CalculationStep(ReserveField.RETHRNA, List.of(ReserveField.RETHRN, ReserveField.RETHRNX),
+                        inputs -> inputs.get(ReserveField.RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETHRNX) : inputs.get(ReserveField.RETHRN),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@HLDHRA",
-                new Steps.CalculationStep("@HLDHRA", List.of("HLDHR", "HLDHRX"),
-                        inputs -> inputs.get("HLDHRX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("HLDHRX") : inputs.get("HLDHR"),
+        engine.addStep(ReserveField.HLDHRA,
+                new Steps.CalculationStep(ReserveField.HLDHRA, List.of(ReserveField.HLDHR, ReserveField.HLDHRX),
+                        inputs -> inputs.get(ReserveField.HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.HLDHRX) : inputs.get(ReserveField.HLDHR),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@DOTRSVA",
-                new Steps.CalculationStep("@DOTRSVA", List.of("DOTRSV", "DOTRSVX"),
-                        inputs -> inputs.get("DOTRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("DOTRSVX") : inputs.get("DOTRSV"),
+        engine.addStep(ReserveField.DOTRSVA,
+                new Steps.CalculationStep(ReserveField.DOTRSVA, List.of(ReserveField.DOTRSV, ReserveField.DOTRSVX),
+                        inputs -> inputs.get(ReserveField.DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.DOTRSVX) : inputs.get(ReserveField.DOTRSV),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@RETRSVA",
-                new Steps.CalculationStep("@RETRSVA", List.of("RETRSV", "RETRSVX"),
-                        inputs -> inputs.get("RETRSVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("RETRSVX") : inputs.get("RETRSV"),
+        engine.addStep(ReserveField.RETRSVA,
+                new Steps.CalculationStep(ReserveField.RETRSVA, List.of(ReserveField.RETRSV, ReserveField.RETRSVX),
+                        inputs -> inputs.get(ReserveField.RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.RETRSVX) : inputs.get(ReserveField.RETRSV),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@AOUTBVA",
-                new Steps.CalculationStep("@AOUTBVA", List.of("AOUTBV", "AOUTBVX"),
-                        inputs -> inputs.get("AOUTBVX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("AOUTBVX") : inputs.get("AOUTBV"),
+        engine.addStep(ReserveField.AOUTBVA,
+                new Steps.CalculationStep(ReserveField.AOUTBVA, List.of(ReserveField.AOUTBV, ReserveField.AOUTBVX),
+                        inputs -> inputs.get(ReserveField.AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.AOUTBVX) : inputs.get(ReserveField.AOUTBV),
                         null, null, null, null),
                 Map.of(), null, false);
 
-        engine.addStep("@NEEDA",
-                new Steps.CalculationStep("@NEEDA", List.of("ANEED", "NEEDX"),
-                        inputs -> inputs.get("NEEDX").compareTo(BigDecimal.ZERO) > 0 ? inputs.get("NEEDX") : inputs.get("ANEED"),
+        engine.addStep(ReserveField.NEEDA,
+                new Steps.CalculationStep(ReserveField.NEEDA, List.of(ReserveField.ANEED, ReserveField.NEEDX),
+                        inputs -> inputs.get(ReserveField.NEEDX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(ReserveField.NEEDX) : inputs.get(ReserveField.ANEED),
                         null, null, null, null),
                 Map.of(), null, false);
     }

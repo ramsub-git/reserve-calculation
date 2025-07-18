@@ -6,10 +6,12 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import com.sephora.ism.reserve.ReserveField.*;
+
 public abstract class ReserveCalcStep {
 
-    protected final String fieldName;
-    protected final List<String> dependencyFields;
+    protected final ReserveField fieldName;
+    protected final List<ReserveField> dependencyFields;
     protected CalculationFlow flow;
 
     protected BigDecimal originalValue;
@@ -22,8 +24,8 @@ public abstract class ReserveCalcStep {
     protected final BiFunction<ReserveCalcContext, BigDecimal, BigDecimal> postProcessing;
 
     public ReserveCalcStep(
-            String fieldName,
-            List<String> dependencyFields,
+            ReserveField fieldName,
+            List<ReserveField> dependencyFields,
             Function<ReserveCalcContext, Boolean> preCondition,
             BiFunction<ReserveCalcContext, BigDecimal, Boolean> postCondition,
             Function<ReserveCalcContext, ReserveCalcContext> preProcessing,
@@ -61,7 +63,7 @@ public abstract class ReserveCalcStep {
 
     protected BigDecimal compute(ReserveCalcContext context) {
         BigDecimal sum = BigDecimal.ZERO;
-        for (String dep : dependencyFields) {
+        for (ReserveField dep : dependencyFields) {
             sum = sum.add(context.get(dep));
         }
         return sum;
@@ -83,11 +85,11 @@ public abstract class ReserveCalcStep {
 //        return copy;
 //    }
 
-    public String getFieldName() {
+    public ReserveField getFieldName() {
         return fieldName;
     }
 
-    public List<String> getDependencyFields() {
+    public List<ReserveField> getDependencyFields() {
         return dependencyFields;
     }
 

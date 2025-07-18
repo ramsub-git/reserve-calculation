@@ -10,39 +10,46 @@ import com.sephora.ism.reserve.Inventory;
 
 public class InitialValueWrapper {
 
-    private final Map<String, BigDecimal> values;
+    private final Map<ReserveField, BigDecimal> values;
 
-    InitialValueWrapper(Map<String, BigDecimal> values) {
+    InitialValueWrapper(Map<ReserveField, BigDecimal> values) {
         this.values = values;
     }
 
     public static InitialValueWrapper fromMap(Map<String, BigDecimal> inputMap) {
-        Map<String, BigDecimal> cleaned = new HashMap<>();
+        Map<ReserveField, BigDecimal> cleaned = new HashMap<>();
         for (Map.Entry<String, BigDecimal> entry : inputMap.entrySet()) {
-            cleaned.put(entry.getKey(), sanitize(entry.getValue()));
+            try {
+                ReserveField field = ReserveField.valueOf(entry.getKey());
+                cleaned.put(field, sanitize(entry.getValue()));
+            } catch (IllegalArgumentException e) {
+                // Ignore or log unknown fields
+            }
         }
         return new InitialValueWrapper(cleaned);
     }
 
     public static InitialValueWrapper fromInventory(Inventory inventory) {
-        Map<String, BigDecimal> temp = new HashMap<>();
+        Map<ReserveField, BigDecimal> temp = new HashMap<>();
         // Example: map fields explicitly
-        temp.put("onHand", sanitize(inventory.getOnHand()));
-        temp.put("rohm", sanitize(inventory.getRohm()));
-        temp.put("lost", sanitize(inventory.getLost()));
-        temp.put("oobAdjustment", sanitize(inventory.getOobAdjustment()));
-        temp.put("dotHardReserveAtsYes", sanitize(inventory.getDotHardReserveAtsYes()));
-        temp.put("retHardReserveAtsYes", sanitize(inventory.getRetHardReserveAtsYes()));
-        temp.put("heldHardReserve", sanitize(inventory.getHeldHardReserve()));
-        // Add more as required.
+        temp.put(ReserveField.ONHAND, sanitize(inventory.getOnHand()));
+        temp.put(ReserveField.ROHM, sanitize(inventory.getRohm()));
+        temp.put(ReserveField.LOST, sanitize(inventory.getLost()));
+        temp.put(ReserveField.OOBADJ, sanitize(inventory.getOobAdjustment()));
+        temp.put(ReserveField.DOTHRY, sanitize(inventory.getDotHardReserveAtsYes()));
+        temp.put(ReserveField.RETHRN, sanitize(inventory.getRetHardReserveAtsYes()));
+        temp.put(ReserveField.HLDHR, sanitize(inventory.getHeldHardReserve()));
+
+        // TODO : This needs to be fully completed
+
         return new InitialValueWrapper(temp);
     }
 
-    public void applyToContext(ReserveCalcContext context) {
-        for (Map.Entry<String, BigDecimal> entry : values.entrySet()) {
-            context.put(entry.getKey(), entry.getValue());
-        }
-    }
+//    public void applyToContext(ReserveCalcContext context) {
+//        for (Map.Entry<String, BigDecimal> entry : values.entrySet()) {
+//            context.put(entry.getKey(), entry.getValue());
+//        }
+//    }
 
     private static BigDecimal sanitize(BigDecimal value) {
         if (value == null) {
@@ -54,11 +61,11 @@ public class InitialValueWrapper {
         return value;
     }
 
-    public Map<String, BigDecimal> getValues() {
+    public Map<ReserveField, BigDecimal> getValues() {
         return new HashMap<>(values);
     }
 
-    public BigDecimal get(String fieldName) {
+    public BigDecimal get(ReserveField fieldName) {
         return values.getOrDefault(fieldName, BigDecimal.ZERO);
     }
 

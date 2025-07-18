@@ -12,7 +12,7 @@ public class Steps {
 
     // 1. SkulocFieldStep: Direct passthrough or no-op
     public static class SkulocFieldStep extends ReserveCalcStep {
-        public SkulocFieldStep(String fieldName) {
+        public SkulocFieldStep(ReserveField fieldName) {
             super(fieldName, List.of(), null, null, null, null);
         }
 
@@ -36,10 +36,10 @@ public class Steps {
 
     // 2. CalculationStep: Formula-based calculation
     public static class CalculationStep extends ReserveCalcStep {
-        private final Function<Map<String, BigDecimal>, BigDecimal> formula;
+        private final Function<Map<ReserveField, BigDecimal>, BigDecimal> formula;
 
-        public CalculationStep(String fieldName, List<String> dependencyFields,
-                               Function<Map<String, BigDecimal>, BigDecimal> formula,
+        public CalculationStep(ReserveField fieldName, List<ReserveField> dependencyFields,
+                               Function<Map<ReserveField, BigDecimal>, BigDecimal> formula,
                                Function<ReserveCalcContext, Boolean> preCondition,
                                BiFunction<ReserveCalcContext, BigDecimal, Boolean> postCondition,
                                Function<ReserveCalcContext, ReserveCalcContext> preProcessing,
@@ -50,23 +50,23 @@ public class Steps {
 
         @Override
         protected BigDecimal compute(ReserveCalcContext context) {
-            Map<String, BigDecimal> inputs = new LinkedHashMap<>();
-            for (String dependency : dependencyFields) {
+            Map<ReserveField, BigDecimal> inputs = new LinkedHashMap<>();
+            for (ReserveField dependency : dependencyFields) {
                 inputs.put(dependency, context.get(dependency));
             }
             BigDecimal result = formula.apply(inputs);
 
-    // Debug log for complex calculations
-    if (getFieldName().contains("X") || getFieldName().startsWith("@")) {
-        ReserveCalculationLogger.debugStepCalculation(
-            getFieldName(), 
-            inputs, 
-            result, 
-            "Custom formula"
-        );
+            // Debug log for complex calculations
+            if (getFieldName().name().contains("X") || getFieldName().name().startsWith("@")) {
+                ReserveCalculationLogger.debugStepCalculation(
+                        getFieldName(),
+                        inputs,
+                        result,
+                        "Custom formula"
+                );
 
-    }
-        return result;
+            }
+            return result;
         }
 
         @Override
@@ -83,10 +83,10 @@ public class Steps {
 
     // 3. ConstraintStep: Min/Max clamping logic
     public static class ConstraintStep extends ReserveCalcStep {
-        private final String baseField;
-        private final String constraintField;
+        private final ReserveField baseField;
+        private final ReserveField constraintField;
 
-        public ConstraintStep(String fieldName, String baseField, String constraintField) {
+        public ConstraintStep(ReserveField fieldName, ReserveField baseField, ReserveField constraintField) {
             super(fieldName, List.of(baseField, constraintField), null, null, null, null);
             this.baseField = baseField;
             this.constraintField = constraintField;
@@ -115,7 +115,7 @@ public class Steps {
     public static class ContextConditionStep extends ReserveCalcStep {
         private final Function<ReserveCalcContext, BigDecimal> conditionLogic;
 
-        public ContextConditionStep(String fieldName, List<String> dependencyFields,
+        public ContextConditionStep(ReserveField fieldName, List<ReserveField> dependencyFields,
                                     Function<ReserveCalcContext, BigDecimal> conditionLogic) {
             super(fieldName, dependencyFields, null, null, null, null);
             this.conditionLogic = conditionLogic;
@@ -143,7 +143,7 @@ public class Steps {
     public static class ConstantStep extends ReserveCalcStep {
         private final BigDecimal constantValue;
 
-        public ConstantStep(String fieldName, BigDecimal constantValue) {
+        public ConstantStep(ReserveField fieldName, BigDecimal constantValue) {
             super(fieldName, List.of(), null, null, null, null);
             this.constantValue = constantValue;
         }
@@ -166,9 +166,9 @@ public class Steps {
 
     // 6. CopyStep: Copy from one field to another
     public static class CopyStep extends ReserveCalcStep {
-        private final String sourceField;
+        private final ReserveField sourceField;
 
-        public CopyStep(String fieldName, String sourceField) {
+        public CopyStep(ReserveField fieldName, ReserveField sourceField) {
             super(fieldName, List.of(sourceField), null, null, null, null);
             this.sourceField = sourceField;
         }
