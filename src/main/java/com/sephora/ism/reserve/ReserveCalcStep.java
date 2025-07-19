@@ -6,9 +6,12 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import com.sephora.ism.reserve.ReserveField.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class ReserveCalcStep {
+
+    protected static final Logger logger = LoggerFactory.getLogger(ReserveCalcStep.class);
 
     protected final ReserveField fieldName;
     protected final List<ReserveField> dependencyFields;
@@ -23,7 +26,7 @@ public abstract class ReserveCalcStep {
     protected final Function<ReserveCalcContext, ReserveCalcContext> preProcessing;
     protected final BiFunction<ReserveCalcContext, BigDecimal, BigDecimal> postProcessing;
 
-    public ReserveCalcStep(
+    protected ReserveCalcStep(
             ReserveField fieldName,
             List<ReserveField> dependencyFields,
             Function<ReserveCalcContext, Boolean> preCondition,
@@ -38,6 +41,7 @@ public abstract class ReserveCalcStep {
         this.preProcessing = preProcessing != null ? preProcessing : ctx -> ctx;
         this.postProcessing = postProcessing != null ? postProcessing : (ctx, result) -> result;
 
+        // Initialize tracking values to prevent NPE
         this.originalValue = BigDecimal.ZERO;
         this.previousValue = BigDecimal.ZERO;
         this.currentValue = BigDecimal.ZERO;
@@ -45,45 +49,46 @@ public abstract class ReserveCalcStep {
 
     public BigDecimal calculateValue(ReserveCalcContext context) {
         if (!preCondition.apply(context)) {
+//            logger.info("  [" + fieldName + "] PreCondition failed, returning current: " + currentValue);
             return currentValue;
         }
 
         ReserveCalcContext processedContext = preProcessing.apply(context);
 
+//        logger.info("  [" + fieldName + "] Computing value...");
         BigDecimal result = compute(processedContext);
+//        logger.info("  [" + fieldName + "] Computed raw result: " + result);
+
         BigDecimal processedResult = postProcessing.apply(processedContext, result);
+//        logger.info("  [" + fieldName + "] After postProcessing: " + processedResult);
 
         if (postCondition.apply(processedContext, processedResult)) {
-            updateTracking(processedResult);
+//            logger.info("  [" + fieldName + "] PostCondition passed, returning: " + processedResult);
             return processedResult;
         } else {
+//            logger.info("  [" + fieldName + "] PostCondition failed, returning current: " + currentValue);
             return currentValue;
         }
     }
 
     protected BigDecimal compute(ReserveCalcContext context) {
+        // For SkulocFieldStep, this will be overridden
+        // For other steps, sum dependencies
         BigDecimal sum = BigDecimal.ZERO;
         for (ReserveField dep : dependencyFields) {
-            sum = sum.add(context.get(dep));
+            BigDecimal depValue = context.getCurrentValue(this.flow, dep);
+            sum = sum.add(depValue);
         }
         return sum;
     }
 
-    protected void updateTracking(BigDecimal newValue) {
-        if (originalValue.equals(BigDecimal.ZERO)) {
+    public void updateTracking(BigDecimal newValue) {
+        if (originalValue.equals(BigDecimal.ZERO) && !newValue.equals(BigDecimal.ZERO)) {
             originalValue = newValue;
         }
         previousValue = currentValue;
         currentValue = newValue;
     }
-
-//    public ReserveCalcStep copy() {
-//        ReserveCalcStep copy = new ReserveCalcStep(fieldName, dependencyFields, preCondition, postCondition, preProcessing, postProcessing);
-//        copy.originalValue = this.originalValue;
-//        copy.previousValue = this.previousValue;
-//        copy.currentValue = this.currentValue;
-//        return copy;
-//    }
 
     public ReserveField getFieldName() {
         return fieldName;

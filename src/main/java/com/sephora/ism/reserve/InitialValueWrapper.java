@@ -31,25 +31,30 @@ public class InitialValueWrapper {
 
     public static InitialValueWrapper fromInventory(Inventory inventory) {
         Map<ReserveField, BigDecimal> temp = new HashMap<>();
-        // Example: map fields explicitly
+        // Basic fields
         temp.put(ReserveField.ONHAND, sanitize(inventory.getOnHand()));
         temp.put(ReserveField.ROHM, sanitize(inventory.getRohm()));
         temp.put(ReserveField.LOST, sanitize(inventory.getLost()));
         temp.put(ReserveField.OOBADJ, sanitize(inventory.getOobAdjustment()));
+
+        // Hard reserves
         temp.put(ReserveField.DOTHRY, sanitize(inventory.getDotHardReserveAtsYes()));
-        temp.put(ReserveField.RETHRN, sanitize(inventory.getRetHardReserveAtsYes()));
+        temp.put(ReserveField.DOTHRN, sanitize(inventory.getDotHardReserveAtsNo()));
+        temp.put(ReserveField.RETHRY, sanitize(inventory.getRetHardReserveAtsYes()));
+        temp.put(ReserveField.RETHRN, sanitize(inventory.getRetHardReserveAtsNo()));
         temp.put(ReserveField.HLDHR, sanitize(inventory.getHeldHardReserve()));
 
-        // TODO : This needs to be fully completed
+        // Add these default zeros for fields not in Inventory POJO
+        temp.put(ReserveField.SNB, BigDecimal.ZERO);
+        temp.put(ReserveField.DTCO, BigDecimal.ZERO);
+        temp.put(ReserveField.ROHP, BigDecimal.ZERO);
+        temp.put(ReserveField.DOTRSV, BigDecimal.ZERO);
+        temp.put(ReserveField.RETRSV, BigDecimal.ZERO);
+        temp.put(ReserveField.DOTOUTB, BigDecimal.ZERO);
+        temp.put(ReserveField.NEED, BigDecimal.ZERO);
 
         return new InitialValueWrapper(temp);
     }
-
-//    public void applyToContext(ReserveCalcContext context) {
-//        for (Map.Entry<String, BigDecimal> entry : values.entrySet()) {
-//            context.put(entry.getKey(), entry.getValue());
-//        }
-//    }
 
     private static BigDecimal sanitize(BigDecimal value) {
         if (value == null) {
