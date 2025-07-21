@@ -254,35 +254,43 @@ public class ReserveCalculationEngine {
 
     // Converted setupReserveCalculationSteps method with field name lookups
     public static void setupReserveCalculationSteps(ReserveCalculationEngine engine) {
-
+    
         // ===== SECTION 1: BASE FIELDS =====
-
+        
         // Key constant
         engine.addStep(DIV,
                 new Steps.ConstantStep(DIV, new BigDecimal("30")),
                 Map.of(), null, false);
-
-        // Base SKULOC Input Fields
+    
+        // Base SKULOC Input Fields (removed DAMAGED, added OOBADJ)
+        engine.addStep(BYCL,
+                new Steps.SkulocFieldStep(BYCL),
+                Map.of(), null, false);
+    
+        engine.addStep(SKUSTS,
+                new Steps.SkulocFieldStep(SKUSTS),
+                Map.of(), null, false);
+    
         engine.addStep(ONHAND,
                 new Steps.SkulocFieldStep(ONHAND),
                 Map.of(), null, false);
-
+    
         engine.addStep(ROHM,
                 new Steps.SkulocFieldStep(ROHM),
                 Map.of(), null, false);
-
+    
         engine.addStep(LOST,
                 new Steps.SkulocFieldStep(LOST),
                 Map.of(), null, false);
-
+    
         engine.addStep(OOBADJ,
                 new Steps.SkulocFieldStep(OOBADJ),
                 Map.of(), null, false);
-
+    
         // ===== SECTION 2: INITIAL AFS CALCULATION =====
-
+        
         engine.addStep(INITAFS,
-                new Steps.CalculationStep(INITAFS,
+                new Steps.CalculationStep(INITAFS, 
                         List.of(ONHAND, ROHM, LOST, OOBADJ),
                         inputs -> {
                             // Non-JEI: ONHAND - ROHM - LOST - MAX(OOBADJ, 0)
@@ -294,34 +302,84 @@ public class ReserveCalculationEngine {
                         }, null, null, null, null),
                 Map.of(
                         CalculationFlow.JEI,
-                        new Steps.CalculationStep(INITAFS,
+                        new Steps.CalculationStep(INITAFS, 
                                 List.of(ONHAND, LOST),
                                 inputs -> {
                                     // JEI: ONHAND - LOST
                                     return inputs.get(ONHAND).subtract(inputs.get(LOST));
+                                }, null, null, null, null),
+                        CalculationFlow.FRM,
+                        new Steps.CalculationStep(INITAFS, 
+                                List.of(ONHAND, ROHM, LOST, OOBADJ),
+                                inputs -> {
+                                    // FRM: ONHAND - ROHM - LOST - MAX(OOBADJ, 0)
+                                    BigDecimal result = inputs.get(ONHAND)
+                                            .subtract(inputs.get(ROHM))
+                                            .subtract(inputs.get(LOST))
+                                            .subtract(inputs.get(OOBADJ).max(BigDecimal.ZERO));
+                                    return result.max(BigDecimal.ZERO);
                                 }, null, null, null, null)
                 ),
                 null, false);
-
-        // ===== SECTION 3: COMMITTED INVENTORY =====
-
+    
+        // ===== SECTION 3: COMMITMENT FIELDS =====
+        
         engine.addStep(SNB,
                 new Steps.SkulocFieldStep(SNB),
                 Map.of(), null, false);
-
+    
+        engine.addStep(SNBX,
+                new Steps.CalculationStep(SNBX, List.of(INITAFS, SNB),
+                        inputs -> {
+                            BigDecimal available = inputs.get(INITAFS);
+                            BigDecimal requested = inputs.get(SNB);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
+                        }, null, null, null, null),
+                Map.of(), null, false);
+    
         engine.addStep(DTCO,
                 new Steps.SkulocFieldStep(DTCO),
                 Map.of(), null, false);
-
+    
+        engine.addStep(DTCOX,
+                new Steps.CalculationStep(DTCOX, List.of(INITAFS, SNB, SNBX, DTCO),
+                        inputs -> {
+                            BigDecimal initAfs = inputs.get(INITAFS);
+                            BigDecimal snb = inputs.get(SNB);
+                            BigDecimal snbx = inputs.get(SNBX);
+                            BigDecimal dtco = inputs.get(DTCO);
+                            
+                            // Calculate actual SNB used
+                            BigDecimal snbActual = snbx.compareTo(BigDecimal.ZERO) > 0 ? snbx : snb;
+                            BigDecimal available = initAfs.subtract(snbActual).max(BigDecimal.ZERO);
+                            
+                            return available.compareTo(dtco) < 0 ? available : BigDecimal.ZERO;
+                        }, null, null, null, null),
+                Map.of(), null, false);
+    
         engine.addStep(ROHP,
                 new Steps.SkulocFieldStep(ROHP),
                 Map.of(), null, false);
-
-        // ===== SECTION 4: UNCOMMITTED AFS (Before Reserves) =====
-
+    
+        engine.addStep(ROHPX,
+                new Steps.CalculationStep(ROHPX, List.of(INITAFS, SNB, SNBX, DTCO, DTCOX, ROHP),
+                        inputs -> {
+                            BigDecimal initAfs = inputs.get(INITAFS);
+                            BigDecimal snbActual = inputs.get(SNBX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                    inputs.get(SNBX) : inputs.get(SNB);
+                            BigDecimal dtcoActual = inputs.get(DTCOX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                    inputs.get(DTCOX) : inputs.get(DTCO);
+                            BigDecimal rohp = inputs.get(ROHP);
+                            
+                            BigDecimal available = initAfs.subtract(snbActual).subtract(dtcoActual).max(BigDecimal.ZERO);
+                            return available.compareTo(rohp) < 0 ? available : BigDecimal.ZERO;
+                        }, null, null, null, null),
+                Map.of(), null, false);
+    
+        // ===== SECTION 4: UNCOMMITTED AFS =====
+        
         engine.addStep(UNCOMAFS,
-                new Steps.CalculationStep(UNCOMAFS,
-                        List.of(INITAFS, SNB, DTCO, ROHP),
+                new Steps.CalculationStep(UNCOMAFS, List.of(INITAFS, SNB, DTCO, ROHP),
                         inputs -> {
                             BigDecimal result = inputs.get(INITAFS)
                                     .subtract(inputs.get(SNB))
@@ -330,262 +388,207 @@ public class ReserveCalculationEngine {
                             return result.max(BigDecimal.ZERO);
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // ===== SECTION 5: HARD RESERVES WITH CONSTRAINTS =====
-
-        // DOT Hard Reserve ATS Yes
+    
+        // ===== SECTION 5: RUNNING INVENTORY TRACKER =====
+        // This replaces the need for getConsumedUpTo() helper function
+        engine.addStep(RUNNING_AFS,
+                new Steps.RunningCalculationStep(RUNNING_AFS,
+                        UNCOMAFS,  // Start with uncommitted AFS
+                        List.of(DOTHRY, DOTHRYX, DOTHRN, DOTHRNX, RETHRY, RETHRYX, 
+                               RETHRN, RETHRNX, HLDHR, HLDHRX, DOTRSV, DOTRSVX, 
+                               RETRSV, RETRSVX, AOUTBV, AOUTBVX, ANEED, NEEDX),
+                        false, // Not self-driven, triggers on allocation fields
+                        (running, allocated) -> running.subtract(allocated).max(BigDecimal.ZERO)
+                ),
+                Map.of(), null, true);
+    
+        // ===== SECTION 6: HARD RESERVES WITH CONSTRAINTS =====
+        
         engine.addStep(DOTHRY,
                 new Steps.SkulocFieldStep(DOTHRY),
                 Map.of(), null, false);
-
+    
         engine.addStep(DOTHRYX,
-                new Steps.CalculationStep(DOTHRYX,
-                        List.of(UNCOMAFS, DOTHRY),
+                new Steps.CalculationStep(DOTHRYX, List.of(RUNNING_AFS, DOTHRY),
                         inputs -> {
-                            BigDecimal available = inputs.get(UNCOMAFS);
+                            BigDecimal available = inputs.get(RUNNING_AFS);
                             BigDecimal requested = inputs.get(DOTHRY);
-                            // If available < requested, return available, else 0
                             return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // DOT Hard Reserve ATS No
+    
         engine.addStep(DOTHRN,
                 new Steps.SkulocFieldStep(DOTHRN),
                 Map.of(), null, false);
-
+    
         engine.addStep(DOTHRNX,
-                new Steps.CalculationStep(DOTHRNX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN),
+                new Steps.CalculationStep(DOTHRNX, List.of(RUNNING_AFS, DOTHRN),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            BigDecimal dothry = inputs.get(DOTHRY);
-                            BigDecimal dothryx = inputs.get(DOTHRYX);
-                            BigDecimal dothrn = inputs.get(DOTHRN);
-
-                            // Calculate running inventory after DOTHRY
-                            BigDecimal dothryActual = dothryx.compareTo(BigDecimal.ZERO) > 0 ? dothryx : dothry;
-                            BigDecimal available = uncomafs.subtract(dothryActual).max(BigDecimal.ZERO);
-
-                            return available.compareTo(dothrn) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(DOTHRN);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // Retail Hard Reserve ATS Yes
+    
         engine.addStep(RETHRY,
                 new Steps.SkulocFieldStep(RETHRY),
                 Map.of(), null, false);
-
+    
         engine.addStep(RETHRYX,
-                new Steps.CalculationStep(RETHRYX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN, DOTHRNX, RETHRY),
+                new Steps.CalculationStep(RETHRYX, List.of(RUNNING_AFS, RETHRY),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            BigDecimal dothryActual = inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(DOTHRYX) : inputs.get(DOTHRY);
-                            BigDecimal dothrnActual = inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(DOTHRNX) : inputs.get(DOTHRN);
-                            BigDecimal available = uncomafs.subtract(dothryActual).subtract(dothrnActual).max(BigDecimal.ZERO);
-
-                            return available.compareTo(inputs.get(RETHRY)) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(RETHRY);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // Retail Hard Reserve ATS No
+    
         engine.addStep(RETHRN,
                 new Steps.SkulocFieldStep(RETHRN),
                 Map.of(), null, false);
-
+    
         engine.addStep(RETHRNX,
-                new Steps.CalculationStep(RETHRNX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN, DOTHRNX, RETHRY, RETHRYX, RETHRN),
+                new Steps.CalculationStep(RETHRNX, List.of(RUNNING_AFS, RETHRN),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            // Sum all previous actuals
-                            BigDecimal consumed = BigDecimal.ZERO;
-                            consumed = consumed.add(inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(DOTHRYX) : inputs.get(DOTHRY));
-                            consumed = consumed.add(inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(DOTHRNX) : inputs.get(DOTHRN));
-                            consumed = consumed.add(inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(RETHRYX) : inputs.get(RETHRY));
-
-                            BigDecimal available = uncomafs.subtract(consumed).max(BigDecimal.ZERO);
-                            return available.compareTo(inputs.get(RETHRN)) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(RETHRN);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // Held Hard Reserve
+    
         engine.addStep(HLDHR,
                 new Steps.SkulocFieldStep(HLDHR),
                 Map.of(), null, false);
-
+    
         engine.addStep(HLDHRX,
-                new Steps.CalculationStep(HLDHRX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN, DOTHRNX,
-                                RETHRY, RETHRYX, RETHRN, RETHRNX, HLDHR),
+                new Steps.CalculationStep(HLDHRX, List.of(RUNNING_AFS, HLDHR),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            // Calculate all previous consumptions
-                            BigDecimal consumed = BigDecimal.ZERO;
-                            consumed = consumed.add(inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(DOTHRYX) : inputs.get(DOTHRY));
-                            consumed = consumed.add(inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(DOTHRNX) : inputs.get(DOTHRN));
-                            consumed = consumed.add(inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(RETHRYX) : inputs.get(RETHRY));
-                            consumed = consumed.add(inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ?
-                                    inputs.get(RETHRNX) : inputs.get(RETHRN));
-
-                            BigDecimal available = uncomafs.subtract(consumed).max(BigDecimal.ZERO);
-                            return available.compareTo(inputs.get(HLDHR)) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(HLDHR);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // ===== SECTION 6: PO RESERVES =====
-
-        // DOT Reserve
+    
+        // ===== SECTION 7: PO RESERVES =====
+        
         engine.addStep(DOTRSV,
                 new Steps.SkulocFieldStep(DOTRSV),
                 Map.of(), null, false);
-
+    
         engine.addStep(DOTRSVX,
-                new Steps.CalculationStep(DOTRSVX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN, DOTHRNX,
-                                RETHRY, RETHRYX, RETHRN, RETHRNX, HLDHR, HLDHRX, DOTRSV),
+                new Steps.CalculationStep(DOTRSVX, List.of(RUNNING_AFS, DOTRSV),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            // Calculate running inventory after all hard reserves
-                            BigDecimal consumed = getConsumedUpTo(inputs, HLDHR);
-                            BigDecimal available = uncomafs.subtract(consumed).max(BigDecimal.ZERO);
-                            return available.compareTo(inputs.get(DOTRSV)) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(DOTRSV);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // Retail Reserve
+    
         engine.addStep(RETRSV,
                 new Steps.SkulocFieldStep(RETRSV),
                 Map.of(), null, false);
-
+    
         engine.addStep(RETRSVX,
-                new Steps.CalculationStep(RETRSVX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN, DOTHRNX,
-                                RETHRY, RETHRYX, RETHRN, RETHRNX, HLDHR, HLDHRX,
-                                DOTRSV, DOTRSVX, RETRSV),
+                new Steps.CalculationStep(RETRSVX, List.of(RUNNING_AFS, RETRSV),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            BigDecimal consumed = getConsumedUpTo(inputs, DOTRSV);
-                            BigDecimal available = uncomafs.subtract(consumed).max(BigDecimal.ZERO);
-                            return available.compareTo(inputs.get(RETRSV)) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(RETRSV);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // ===== SECTION 7: OUTB BACKFILL =====
-
+    
+        // ===== SECTION 8: OUTBOUND BACKFILL =====
+        
         engine.addStep(DOTOUTB,
                 new Steps.SkulocFieldStep(DOTOUTB),
                 Map.of(), null, false);
-
+    
         // AOUTBV - Special: MAX((DOTOUTB - @DOTATS), 0)
         engine.addStep(AOUTBV,
-                new Steps.CalculationStep(AOUTBV,
-                        List.of(DOTOUTB, DOTATS),
+                new Steps.CalculationStep(AOUTBV, List.of(DOTOUTB, DOTATS),
                         inputs -> {
                             BigDecimal dotoutb = inputs.get(DOTOUTB);
                             BigDecimal dotats = inputs.get(DOTATS);
                             return dotoutb.subtract(dotats).max(BigDecimal.ZERO);
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // AOUTBVX - Special: Uses running inventory BEFORE AOUTBV
+    
         engine.addStep(AOUTBVX,
-                new Steps.CalculationStep(AOUTBVX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN, DOTHRNX,
-                                RETHRY, RETHRYX, RETHRN, RETHRNX, HLDHR, HLDHRX,
-                                DOTRSV, DOTRSVX, RETRSV, RETRSVX, AOUTBV),
+                new Steps.CalculationStep(AOUTBVX, List.of(RUNNING_AFS, AOUTBV),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            BigDecimal consumed = getConsumedUpTo(inputs, RETRSV);
-                            BigDecimal available = uncomafs.subtract(consumed).max(BigDecimal.ZERO);
-                            BigDecimal aoutbv = inputs.get(AOUTBV);
-                            return available.compareTo(aoutbv) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(AOUTBV);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // ===== SECTION 8: RETAIL NEED BACKFILL =====
-
+    
+        // ===== SECTION 9: RETAIL NEED BACKFILL =====
+        
         engine.addStep(NEED,
                 new Steps.SkulocFieldStep(NEED),
                 Map.of(), null, false);
-
+    
         // ANEED - Special: MAX((NEED - @RETAILATS), 0)
         engine.addStep(ANEED,
-                new Steps.CalculationStep(ANEED,
-                        List.of(NEED, RETAILATS),
+                new Steps.CalculationStep(ANEED, List.of(NEED, RETAILATS),
                         inputs -> {
                             BigDecimal need = inputs.get(NEED);
                             BigDecimal retailats = inputs.get(RETAILATS);
                             return need.subtract(retailats).max(BigDecimal.ZERO);
                         }, null, null, null, null),
                 Map.of(), null, false);
-
+    
         engine.addStep(NEEDX,
-                new Steps.CalculationStep(NEEDX,
-                        List.of(UNCOMAFS, DOTHRY, DOTHRYX, DOTHRN, DOTHRNX,
-                                RETHRY, RETHRYX, RETHRN, RETHRNX, HLDHR, HLDHRX,
-                                DOTRSV, DOTRSVX, RETRSV, RETRSVX, AOUTBV, AOUTBVX, ANEED),
+                new Steps.CalculationStep(NEEDX, List.of(RUNNING_AFS, ANEED),
                         inputs -> {
-                            BigDecimal uncomafs = inputs.get(UNCOMAFS);
-                            BigDecimal consumed = getConsumedUpTo(inputs, AOUTBV);
-                            BigDecimal available = uncomafs.subtract(consumed).max(BigDecimal.ZERO);
-                            BigDecimal aneed = inputs.get(ANEED);
-                            return available.compareTo(aneed) < 0 ? available : BigDecimal.ZERO;
+                            BigDecimal available = inputs.get(RUNNING_AFS);
+                            BigDecimal requested = inputs.get(ANEED);
+                            return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
                         }, null, null, null, null),
                 Map.of(), null, false);
-
-        // ===== SECTION 9: DYNAMIC AGGREGATE FIELDS =====
-
+    
+        // ===== SECTION 10: DYNAMIC AGGREGATE FIELDS =====
+        
         // @RETAILATS - Retail Available To Sell
         engine.addStep(RETAILATS,
-                new Steps.CalculationStep(RETAILATS,
+                new Steps.CalculationStep(RETAILATS, 
                         List.of(RETHRY, RETHRYX, RETRSV, RETRSVX, ANEED, NEEDX),
                         inputs -> {
-                            BigDecimal retHardYes = inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal retHardYes = inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(RETHRYX) : inputs.get(RETHRY);
-                            BigDecimal retRes = inputs.get(RETRSVX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal retRes = inputs.get(RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(RETRSVX) : inputs.get(RETRSV);
-                            BigDecimal adjNeed = inputs.get(NEEDX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal adjNeed = inputs.get(NEEDX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(NEEDX) : inputs.get(ANEED);
                             return retHardYes.add(retRes).add(adjNeed);
                         }, null, null, null, null),
                 Map.of(), null, true); // isDynamic = true
-
+    
         // @DOTATS - Dotcom Available To Sell
         engine.addStep(DOTATS,
-                new Steps.CalculationStep(DOTATS,
+                new Steps.CalculationStep(DOTATS, 
                         List.of(DOTHRY, DOTHRYX, DOTRSV, DOTRSVX, AOUTBV, AOUTBVX),
                         inputs -> {
-                            BigDecimal dotHardYes = inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal dotHardYes = inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(DOTHRYX) : inputs.get(DOTHRY);
-                            BigDecimal dotRes = inputs.get(DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal dotRes = inputs.get(DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(DOTRSVX) : inputs.get(DOTRSV);
-                            BigDecimal adjOut = inputs.get(AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal adjOut = inputs.get(AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(AOUTBVX) : inputs.get(AOUTBV);
                             return dotHardYes.add(dotRes).add(adjOut);
                         }, null, null, null, null),
                 Map.of(), null, true); // isDynamic = true
-
+    
         // @COMMITTED - Total Committed Inventory
         engine.addStep(COMMITTED,
-                new Steps.CalculationStep(COMMITTED,
-                        List.of(SNB, DTCO, ROHP),
+                new Steps.CalculationStep(COMMITTED, List.of(SNB, DTCO, ROHP),
                         inputs -> inputs.get(SNB).add(inputs.get(DTCO)).add(inputs.get(ROHP)),
                         null, null, null, null),
                 Map.of(), null, true); // isDynamic = true
-
+    
         // @UNCOMMIT - Uncommitted Inventory
         engine.addStep(UNCOMMIT,
-                new Steps.CalculationStep(UNCOMMIT,
+                new Steps.CalculationStep(UNCOMMIT, 
                         List.of(INITAFS, COMMITTED, DOTATS, RETAILATS),
                         inputs -> {
                             BigDecimal init = inputs.get(INITAFS);
@@ -596,163 +599,195 @@ public class ReserveCalculationEngine {
                             return result.max(BigDecimal.ZERO);
                         }, null, null, null, null),
                 Map.of(), null, true); // isDynamic = true
-
+    
         // @UNCOMMHR - Uncommitted Hard Reserve
         engine.addStep(UNCOMMHR,
-                new Steps.CalculationStep(UNCOMMHR,
+                new Steps.CalculationStep(UNCOMMHR, 
                         List.of(DOTHRN, DOTHRNX, RETHRN, RETHRNX, HLDHR, HLDHRX),
                         inputs -> {
-                            BigDecimal dotNo = inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal dotNo = inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(DOTHRNX) : inputs.get(DOTHRN);
-                            BigDecimal retNo = inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal retNo = inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(RETHRNX) : inputs.get(RETHRN);
-                            BigDecimal held = inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ?
+                            BigDecimal held = inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(HLDHRX) : inputs.get(HLDHR);
                             return dotNo.add(retNo).add(held);
                         }, null, null, null, null),
                 Map.of(), null, true); // isDynamic = true
-
-        // ===== SECTION 10: FINAL OUTPUT FIELDS =====
-
-        // @OMSSUP - OMS Supply (complex multi-step calculation)
+    
+        // ===== SECTION 11: FINAL OUTPUT FIELDS =====
+        
+        // @OMSSUP - OMS Supply
         engine.addStep(OMSSUP,
-                new Steps.CalculationStep(OMSSUP,
-                        List.of(INITAFS, DOTATS, DTCO, DTCOX),
+                new Steps.CalculationStep(OMSSUP, List.of(INITAFS, DOTATS, DTCO, DTCOX),
                         inputs -> {
                             BigDecimal afs = inputs.get(INITAFS);
                             if (afs.compareTo(BigDecimal.ZERO) < 0) return BigDecimal.ZERO;
-
-                            BigDecimal dtcoAct = inputs.get(DTCOX).compareTo(BigDecimal.ZERO) > 0 ?
+                            
+                            BigDecimal dtcoAct = inputs.get(DTCOX).compareTo(BigDecimal.ZERO) > 0 ? 
                                     inputs.get(DTCOX) : inputs.get(DTCO);
                             return inputs.get(DOTATS).add(dtcoAct);
                         }, null, null, null, null),
                 Map.of(
                         CalculationFlow.JEI,
-                        new Steps.CalculationStep(OMSSUP,
+                        new Steps.CalculationStep(OMSSUP, 
                                 List.of(INITAFS, DOTATS, DTCO, DTCOX, SNB, SNBX, DOTHRN, DOTHRNX, UNCOMAFS),
                                 inputs -> {
                                     BigDecimal afs = inputs.get(INITAFS);
                                     if (afs.compareTo(BigDecimal.ZERO) < 0) return BigDecimal.ZERO;
-
-                                    BigDecimal dtcoAct = inputs.get(DTCOX).compareTo(BigDecimal.ZERO) > 0 ?
+                                    
+                                    BigDecimal dtcoAct = inputs.get(DTCOX).compareTo(BigDecimal.ZERO) > 0 ? 
                                             inputs.get(DTCOX) : inputs.get(DTCO);
-                                    BigDecimal snbAct = inputs.get(SNBX).compareTo(BigDecimal.ZERO) > 0 ?
+                                    BigDecimal snbAct = inputs.get(SNBX).compareTo(BigDecimal.ZERO) > 0 ? 
                                             inputs.get(SNBX) : inputs.get(SNB);
-                                    BigDecimal dhrnAct = inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ?
+                                    BigDecimal dhrnAct = inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? 
                                             inputs.get(DOTHRNX) : inputs.get(DOTHRN);
-
+                                    
                                     BigDecimal result = inputs.get(DOTATS).add(dtcoAct).add(snbAct).add(dhrnAct);
-
-                                    // Special JEI logic from spec
+                                    
+                                    // Special JEI logic
                                     if (inputs.get(UNCOMAFS).compareTo(BigDecimal.ZERO) <= 0) {
                                         result = dtcoAct.add(snbAct);
                                     }
-
+                                    
                                     return result;
                                 }, null, null, null, null)
                 ),
                 null, false);
-
+    
         // @RETFINAL - Retail Supply Final
         engine.addStep(RETFINAL,
-                new Steps.CalculationStep(RETFINAL,
-                        List.of(INITAFS, RETAILATS),
+                new Steps.CalculationStep(RETFINAL, List.of(INITAFS, RETAILATS),
                         inputs -> {
                             BigDecimal afs = inputs.get(INITAFS);
                             return afs.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : inputs.get(RETAILATS);
                         }, null, null, null, null),
                 Map.of(
                         CalculationFlow.JEI,
-                        new Steps.CalculationStep(RETFINAL,
+                        new Steps.CalculationStep(RETFINAL, 
                                 List.of(INITAFS, RETAILATS, RETHRN, RETHRNX, ROHP, ROHPX, HLDHR, HLDHRX),
                                 inputs -> {
                                     BigDecimal afs = inputs.get(INITAFS);
                                     if (afs.compareTo(BigDecimal.ZERO) < 0) return afs;
-
-                                    BigDecimal rethrnAct = inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ?
+                                    
+                                    BigDecimal rethrnAct = inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? 
                                             inputs.get(RETHRNX) : inputs.get(RETHRN);
-                                    BigDecimal rohpAct = inputs.get(ROHPX).compareTo(BigDecimal.ZERO) > 0 ?
+                                    BigDecimal rohpAct = inputs.get(ROHPX).compareTo(BigDecimal.ZERO) > 0 ? 
                                             inputs.get(ROHPX) : inputs.get(ROHP);
-                                    BigDecimal heldAct = inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ?
+                                    BigDecimal heldAct = inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? 
                                             inputs.get(HLDHRX) : inputs.get(HLDHR);
-
+                                    
                                     return inputs.get(RETAILATS).add(rethrnAct).add(rohpAct).add(heldAct);
                                 }, null, null, null, null),
                         CalculationFlow.FRM,
-                        new Steps.CalculationStep(RETFINAL,
-                                List.of(INITAFS, RETAILATS, AOUTBV, AOUTBVX),
+                        new Steps.CalculationStep(RETFINAL, 
+                                List.of(INITAFS, RETAILATS, AOUTBVA),
                                 inputs -> {
                                     BigDecimal afs = inputs.get(INITAFS);
                                     if (afs.compareTo(BigDecimal.ZERO) < 0) return BigDecimal.ZERO;
-
-                                    BigDecimal aoutbvAct = inputs.get(AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ?
-                                            inputs.get(AOUTBVX) : inputs.get(AOUTBV);
-                                    return inputs.get(RETAILATS).add(aoutbvAct);
+                                    
+                                    return inputs.get(RETAILATS).add(inputs.get(AOUTBVA));
                                 }, null, null, null, null)
                 ),
                 null, false);
-
+    
         // @OMSFINAL - OMS Final Supply
         engine.addStep(OMSFINAL,
-                new Steps.CalculationStep(OMSFINAL,
-                        List.of(OMSSUP),
+                new Steps.CalculationStep(OMSFINAL, List.of(OMSSUP),
                         inputs -> BigDecimal.ZERO, // Default OMS = 0
                         null, null, null, null),
                 Map.of(
                         CalculationFlow.JEI,
-                        new Steps.CalculationStep(OMSFINAL,
-                                List.of(OMSSUP),
+                        new Steps.CalculationStep(OMSFINAL, List.of(OMSSUP),
                                 inputs -> inputs.get(OMSSUP), // JEI returns OMSSUP
                                 null, null, null, null)
                 ),
                 null, false);
-
-        // Note: Buyer class logic would be handled in context condition step if needed
-    }
-
-    // Helper method to calculate consumed inventory up to a certain point
-    private static BigDecimal getConsumedUpTo(Map<ReserveField, BigDecimal> inputs, ReserveField upToField) {
-        BigDecimal consumed = BigDecimal.ZERO;
-
-        // Add consumed amounts in order
-        consumed = consumed.add(inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(DOTHRYX) : inputs.get(DOTHRY));
-
-        if (upToField == DOTHRY) return consumed;
-
-        consumed = consumed.add(inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(DOTHRNX) : inputs.get(DOTHRN));
-
-        if (upToField == DOTHRN) return consumed;
-
-        consumed = consumed.add(inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(RETHRYX) : inputs.get(RETHRY));
-
-        if (upToField == RETHRY) return consumed;
-
-        consumed = consumed.add(inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(RETHRNX) : inputs.get(RETHRN));
-
-        if (upToField == RETHRN) return consumed;
-
-        consumed = consumed.add(inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(HLDHRX) : inputs.get(HLDHR));
-
-        if (upToField == HLDHR) return consumed;
-
-        consumed = consumed.add(inputs.get(DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(DOTRSVX) : inputs.get(DOTRSV));
-
-        if (upToField == DOTRSV) return consumed;
-
-        consumed = consumed.add(inputs.get(RETRSVX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(RETRSVX) : inputs.get(RETRSV));
-
-        if (upToField == RETRSV) return consumed;
-
-        consumed = consumed.add(inputs.get(AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ?
-                inputs.get(AOUTBVX) : inputs.get(AOUTBV));
-
-        return consumed;
+    
+        // ===== SECTION 12: ACTUAL VALUE FIELDS =====
+        
+        engine.addStep(SNBA,
+                new Steps.CalculationStep(SNBA, List.of(SNB, SNBX),
+                        inputs -> inputs.get(SNBX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(SNBX) : inputs.get(SNB),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(DTCOA,
+                new Steps.CalculationStep(DTCOA, List.of(DTCO, DTCOX),
+                        inputs -> inputs.get(DTCOX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(DTCOX) : inputs.get(DTCO),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(ROHPA,
+                new Steps.CalculationStep(ROHPA, List.of(ROHP, ROHPX),
+                        inputs -> inputs.get(ROHPX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(ROHPX) : inputs.get(ROHP),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(DOTHRYA,
+                new Steps.CalculationStep(DOTHRYA, List.of(DOTHRY, DOTHRYX),
+                        inputs -> inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(DOTHRYX) : inputs.get(DOTHRY),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(DOTHRNA,
+                new Steps.CalculationStep(DOTHRNA, List.of(DOTHRN, DOTHRNX),
+                        inputs -> inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(DOTHRNX) : inputs.get(DOTHRN),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(RETHRYA,
+                new Steps.CalculationStep(RETHRYA, List.of(RETHRY, RETHRYX),
+                        inputs -> inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(RETHRYX) : inputs.get(RETHRY),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(RETHRNA,
+                new Steps.CalculationStep(RETHRNA, List.of(RETHRN, RETHRNX),
+                        inputs -> inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(RETHRNX) : inputs.get(RETHRN),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(HLDHRA,
+                new Steps.CalculationStep(HLDHRA, List.of(HLDHR, HLDHRX),
+                        inputs -> inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(HLDHRX) : inputs.get(HLDHR),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(DOTRSVA,
+                new Steps.CalculationStep(DOTRSVA, List.of(DOTRSV, DOTRSVX),
+                        inputs -> inputs.get(DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(DOTRSVX) : inputs.get(DOTRSV),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(RETRSVA,
+                new Steps.CalculationStep(RETRSVA, List.of(RETRSV, RETRSVX),
+                        inputs -> inputs.get(RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(RETRSVX) : inputs.get(RETRSV),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(AOUTBVA,
+                new Steps.CalculationStep(AOUTBVA, List.of(AOUTBV, AOUTBVX),
+                        inputs -> inputs.get(AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(AOUTBVX) : inputs.get(AOUTBV),
+                        null, null, null, null),
+                Map.of(), null, false);
+    
+        engine.addStep(NEEDA,
+                new Steps.CalculationStep(NEEDA, List.of(ANEED, NEEDX),
+                        inputs -> inputs.get(NEEDX).compareTo(BigDecimal.ZERO) > 0 ? 
+                                inputs.get(NEEDX) : inputs.get(ANEED),
+                        null, null, null, null),
+                Map.of(), null, false);
     }
 }
