@@ -3,10 +3,7 @@ package com.sephora.ism.reserve;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.sephora.ism.reserve.Inventory;
 
 public class InitialValueWrapper {
 

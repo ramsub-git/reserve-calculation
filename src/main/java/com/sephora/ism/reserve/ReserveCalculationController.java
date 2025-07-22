@@ -45,26 +45,50 @@ public class ReserveCalculationController {
 
         ReserveCalcContext context = new ReserveCalcContext();
 
+//        Map<String, BigDecimal> skulocData = Map.ofEntries(
+//                Map.entry(ReserveField.ONHAND.name(), new BigDecimal("626")),
+//                Map.entry(ReserveField.ROHM.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.LOST.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.OOBADJ.name(), new BigDecimal("0")),
+//
+//                Map.entry(ReserveField.SNB.name(), new BigDecimal("1")),
+//                Map.entry(ReserveField.DTCO.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.ROHP.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.DOTHRY.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.DOTHRN.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.RETHRY.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.RETHRN.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.HLDHR.name(), new BigDecimal("0")),
+//                Map.entry(ReserveField.DOTRSV.name(), new BigDecimal("255")),
+//                Map.entry(ReserveField.RETRSV.name(), new BigDecimal("84")),
+//                Map.entry(ReserveField.DOTOUTB.name(), new BigDecimal("255")),
+//                Map.entry(ReserveField.NEED.name(), new BigDecimal("84"))
+//        );
+
+
         Map<String, BigDecimal> skulocData = Map.ofEntries(
-                Map.entry(ReserveField.ONHAND.name(), new BigDecimal("626")),
+                Map.entry(ReserveField.ONHAND.name(), new BigDecimal("4593")),
                 Map.entry(ReserveField.ROHM.name(), new BigDecimal("0")),
-                Map.entry(ReserveField.LOST.name(), new BigDecimal("0")),
+                Map.entry(ReserveField.LOST.name(), new BigDecimal("1")),
                 Map.entry(ReserveField.OOBADJ.name(), new BigDecimal("0")),
 
-                Map.entry(ReserveField.SNB.name(), new BigDecimal("1")),
+                Map.entry(ReserveField.SNB.name(), new BigDecimal("0")),
                 Map.entry(ReserveField.DTCO.name(), new BigDecimal("0")),
                 Map.entry(ReserveField.ROHP.name(), new BigDecimal("0")),
                 Map.entry(ReserveField.DOTHRY.name(), new BigDecimal("0")),
-                Map.entry(ReserveField.DOTHRN.name(), new BigDecimal("0")),
+                Map.entry(ReserveField.DOTHRN.name(), new BigDecimal("5984")),
                 Map.entry(ReserveField.RETHRY.name(), new BigDecimal("0")),
-                Map.entry(ReserveField.RETHRN.name(), new BigDecimal("0")),
-                Map.entry(ReserveField.HLDHR.name(), new BigDecimal("0")),
-                Map.entry(ReserveField.DOTRSV.name(), new BigDecimal("255")),
-                Map.entry(ReserveField.RETRSV.name(), new BigDecimal("84")),
-                Map.entry(ReserveField.DOTOUTB.name(), new BigDecimal("255")),
+                Map.entry(ReserveField.RETHRN.name(), new BigDecimal("1500")),
+                Map.entry(ReserveField.HLDHR.name(), new BigDecimal("2992")),
+                Map.entry(ReserveField.DOTRSV.name(), new BigDecimal("2992")),
+                Map.entry(ReserveField.RETRSV.name(), new BigDecimal("0")),
+                Map.entry(ReserveField.DOTOUTB.name(), new BigDecimal("0")),
                 Map.entry(ReserveField.NEED.name(), new BigDecimal("84"))
         );
-
+      
+        
+        
+        
         InitialValueWrapper initialValueWrapper = InitialValueWrapper.fromMap(skulocData);
         context.setInitialValueWrapper(initialValueWrapper);
         engine.calculate(context);

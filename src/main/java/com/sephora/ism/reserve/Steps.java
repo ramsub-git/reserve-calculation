@@ -106,6 +106,49 @@ public class Steps {
         }
     }
 
+
+    
+    // x. SkulocFieldStep: Direct passthrough from InitialValueWrapper
+    public static class SkulocStringFieldStep extends ReserveCalcStep {
+        protected static final Logger logger = LoggerFactory.getLogger(SkulocFieldStep.class);
+
+        public SkulocStringFieldStep(ReserveField fieldName) {
+            super(fieldName, List.of(), null, null, null, null);
+        }
+
+        @Override
+        public BigDecimal calculateValue(ReserveCalcContext context) {
+            if (context.getInitialValueWrapper() == null) {
+                logger.info("  [" + fieldName + "] No InitialValueWrapper, returning current: " + getCurrentValue());
+                return getCurrentValue();
+            }
+            BigDecimal value = context.getInitialValueWrapper().get(fieldName);
+//            logger.info("  [" + fieldName + "] Got value from wrapper: " + value);
+            return value;
+        }
+
+
+        @Override
+        protected BigDecimal compute(ReserveCalcContext context) {
+            // Override compute to get value from InitialValueWrapper
+            if (context.getInitialValueWrapper() != null) {
+                return context.getInitialValueWrapper().get(fieldName);
+            }
+            return BigDecimal.ZERO;
+        }
+
+        @Override
+        public ReserveCalcStep copy() {
+            SkulocStringFieldStep copy = new SkulocStringFieldStep(fieldName);
+            copy.flow = this.flow;
+            copy.originalValue = this.originalValue;
+            copy.previousValue = this.previousValue;
+            copy.currentValue = this.currentValue;
+            return copy;
+        }
+    }
+
+    
     // 3. RunningCalculationStep - Fixed version
     public static class RunningCalculationStep extends ReserveCalcStep {
         // private final ReserveField initialValueField;
