@@ -94,6 +94,9 @@ public class ReserveCalcContext {
 
     public void registerRunningStep(CalculationFlow flow, Steps.RunningCalculationStep runningStep) {
         runningSteps.get(flow).add(runningStep);
+        // Also add to fieldValues so getStep() can find it
+        runningStep.setFlow(flow);
+        putStep(flow, runningStep.getFieldName(), runningStep);
     }
 
     // === Core Value Access Methods ===
@@ -184,43 +187,43 @@ public class ReserveCalcContext {
                                ReserveCalcStep contextConditionStep) {
 
         ReserveField fieldName = currentSteps.values().iterator().next().getFieldName();
-        // logger.info("\n=== CALCULATING STEP " + stepIndex + ": " + fieldName + " ===");
+// logger.info("\n=== CALCULATING STEP " + stepIndex + ": " + fieldName + " ===");
 
         Map<CalculationFlow, ReserveCalcStep> snapshotForThisStep = new EnumMap<>(CalculationFlow.class);
 
 
-        // FIRST, store all steps in the context so they can be found later!
+// FIRST, store all steps in the context so they can be found later!
         for (Map.Entry<CalculationFlow, ReserveCalcStep> entry : currentSteps.entrySet()) {
             CalculationFlow flow = entry.getKey();
             ReserveCalcStep step = entry.getValue();
 
-            // Store the step in fieldValues so updateStepValue can find it
+// Store the step in fieldValues so updateStepValue can find it
             putStep(flow, fieldName, step);
         }
 
-        // Process each flow's step
+// Process each flow's step
         for (Map.Entry<CalculationFlow, ReserveCalcStep> entry : currentSteps.entrySet()) {
             CalculationFlow flow = entry.getKey();
             ReserveCalcStep step = entry.getValue();
 
-            // logger.info("\n[" + flow + "] Processing " + step.getClass().getSimpleName() + " for " + fieldName);
-            // logger.info("  Current value before calc: " + step.getCurrentValue());
+// logger.info("\n[" + flow + "] Processing " + step.getClass().getSimpleName() + " for " + fieldName);
+// logger.info("  Current value before calc: " + step.getCurrentValue());
 
             try {
                 BigDecimal value = step.calculateValue(this);
-                // logger.info("  Calculated value: {}", value);
+// logger.info("  Calculated value: {}", value);
 
-                // NOW update the tracking
+// NOW update the tracking
                 step.updateTracking(value);
-                // logger.info("  Updated tracking - current: {}, prev: {}", step.getCurrentValue(), step.getPreviousValue());
+// logger.info("  Updated tracking - current: {}, prev: {}", step.getCurrentValue(), step.getPreviousValue());
 
-                // Store in context
+// Store in context
                 updateStepValue(flow, step.getFieldName(), value);
-                // logger.info("  Stored in context for " + flow + "." + fieldName + " = " + value);
+// logger.info("  Stored in context for " + flow + "." + fieldName + " = " + value);
 
                 snapshotForThisStep.put(flow, step.copy());
-
-                // Trigger running calculations for this flow
+ 
+// Trigger running calculations for this flow
                 triggerRunningCalculations(flow, step.getFieldName(), stepIndex > 0);
 
             } catch (Exception e) {
@@ -230,16 +233,16 @@ public class ReserveCalcContext {
             }
         }
 
-        // Store in resultSets for tracking
+// Store in resultSets for tracking
         resultSets.put(fieldName, new EnumMap<>(snapshotForThisStep));
-        // logger.info("\nStored resultSet for " + fieldName);
+// logger.info("\nStored resultSet for " + fieldName);
         showResultSetsPropagation();
-        // Handle context condition step if present
+// Handle context condition step if present
         if (contextConditionStep != null) {
-            // logger.info("\nProcessing context condition step...");
+// logger.info("\nProcessing context condition step...");
             try {
                 BigDecimal finalValue = contextConditionStep.calculateValue(this);
-                // logger.info("  Context condition result: " + finalValue);
+// logger.info("  Context condition result: " + finalValue);
                 for (CalculationFlow flow : CalculationFlow.values()) {
                     updateStepValue(flow, contextConditionStep.getFieldName(), finalValue);
                 }
@@ -248,15 +251,19 @@ public class ReserveCalcContext {
             }
         }
 
-        // Process dynamic steps
-        // logger.info("\nProcessing " + dynamicSteps.size() + " dynamic steps...");
+// Process dynamic steps
+// logger.info("\nProcessing " + dynamicSteps.size() + " dynamic steps...");
         for (ReserveCalcStep dynamicStep : dynamicSteps) {
             if (!(dynamicStep instanceof Steps.RunningCalculationStep)) {
-                // logger.info("  Dynamic step: " + dynamicStep.getFieldName());
+// logger.info("  Dynamic step: " + dynamicStep.getFieldName());
                 try {
                     for (CalculationFlow flow : CalculationFlow.values()) {
                         ReserveCalcStep flowStep = dynamicStep.copy();
                         flowStep.setFlow(flow);
+
+                        // FIX: Register the step first so updateStepValue can find it
+                        putStep(flow, flowStep.getFieldName(), flowStep);
+
                         BigDecimal dynamicValue = flowStep.calculateValue(this);
                         updateStepValue(flow, flowStep.getFieldName(), dynamicValue);
                         // logger.info("    " + flow + "." + flowStep.getFieldName() + " = " + dynamicValue);
@@ -272,9 +279,8 @@ public class ReserveCalcContext {
         }
 
         stepSnapshots.put(stepIndex, snapshotForThisStep);
-        // logger.info("\n=== END STEP " + stepIndex + " ===\n");
+// logger.info("\n=== END STEP " + stepIndex + " ===\n");
     }
-
 
     public void showResultSetsPropagation() {
         // Get the last outer entry
