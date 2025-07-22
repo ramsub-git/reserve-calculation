@@ -108,32 +108,34 @@ public class Steps {
 
     // 3. RunningCalculationStep - Fixed version
     public static class RunningCalculationStep extends ReserveCalcStep {
-        private final ReserveField initialValueField;
-        private final List<ReserveField> triggerFields;
-        private final boolean selfDriven;
-        private final BiFunction<BigDecimal, BigDecimal, BigDecimal> formula;
+        // private final ReserveField initialValueField;
+        protected final List<ReserveField> triggerFields;
+        protected final boolean selfDriven;
+        protected final BiFunction<BigDecimal, BigDecimal, BigDecimal> formula;
 
         public RunningCalculationStep(ReserveField outputField,
-                                      ReserveField initialValueField,
+        							  BigDecimal startingValue,
+//                                    // ReserveField initialValueField,
                                       List<ReserveField> triggerFields,
                                       boolean selfDriven,
                                       BiFunction<BigDecimal, BigDecimal, BigDecimal> formula) {
             // Pass trigger fields as dependencies for getDependencyFields() to work
             super(outputField, triggerFields, null, null, null, null);
-            this.initialValueField = initialValueField;
+            this.originalValue = this.currentValue = startingValue;
+            // this.initialValueField = initialValueField;
             this.triggerFields = new ArrayList<>(triggerFields);
             this.selfDriven = selfDriven;
             this.formula = formula;
         }
 
         public boolean shouldTrigger(ReserveField triggeredField, boolean afterInitStep) {
-            if (selfDriven) {
-                // For self-driven, trigger only once after initial value field is set
-                return afterInitStep && triggeredField.equals(initialValueField);
-            } else {
+//            if (selfDriven) {
+//                // For self-driven, trigger only once after initial value field is set
+//                return afterInitStep && triggeredField.equals(initialValueField);
+//            } else {
                 // For dependency-driven, trigger when one of the trigger fields changes
                 return triggerFields.contains(triggeredField);
-            }
+//            }
         }
 
         public BigDecimal calculateValue(ReserveCalcContext context, ReserveField triggeredField) {
@@ -141,13 +143,13 @@ public class Steps {
             BigDecimal runningValue = context.getCurrentValue(flow, fieldName);
 
             // If no running value exists yet, initialize from the initial value field
-            if (runningValue == null || runningValue.equals(BigDecimal.ZERO)) {
-                if (initialValueField != null) {
-                    runningValue = context.getCurrentValue(flow, initialValueField);
-                } else {
-                    runningValue = BigDecimal.ZERO;
-                }
-            }
+//            if (runningValue == null || runningValue.equals(BigDecimal.ZERO)) {
+//                if (initialValueField != null) {
+//                    runningValue = context.getCurrentValue(flow, initialValueField);
+//                } else {
+//                    runningValue = BigDecimal.ZERO;
+//                }
+//            }
 
             // Get the value that triggered this calculation
             BigDecimal triggeredValue = context.getCurrentValue(flow, triggeredField);
@@ -182,7 +184,8 @@ public class Steps {
         public ReserveCalcStep copy() {
             RunningCalculationStep copy = new RunningCalculationStep(
                     this.fieldName,
-                    this.initialValueField,
+                    this.originalValue,
+                    // this.initialValueField,
                     new ArrayList<>(this.triggerFields),
                     this.selfDriven,
                     this.formula
@@ -195,6 +198,94 @@ public class Steps {
         }
     }
 
+    
+ // RunningWithInitialStep - Full Implementation
+    public static class RunningWithInitialStep extends RunningCalculationStep {
+        private final ReserveField initialField;
+        private boolean initialized = false;
+
+        public RunningWithInitialStep(ReserveField outputField,
+                                      ReserveField initialField,
+                                      List<ReserveField> triggerFields,
+                                      boolean selfDriven,
+                                      BiFunction<BigDecimal, BigDecimal, BigDecimal> formula) {
+            // Call parent constructor with BigDecimal.ZERO as starting value
+            super(outputField, BigDecimal.ZERO, triggerFields, selfDriven, formula);
+            this.initialField = initialField;
+        }
+
+        @Override
+        public boolean shouldTrigger(ReserveField triggeredField, boolean afterInitStep) {
+            // Trigger on the initial field OR any of the regular trigger fields
+            if (triggeredField.equals(initialField)) {
+                return true; // Always trigger for initial field
+            }
+            return super.shouldTrigger(triggeredField, afterInitStep);
+        }
+
+        @Override
+        public BigDecimal calculateValue(ReserveCalcContext context, ReserveField triggeredField) {
+            if (!initialized && triggeredField.equals(initialField)) {
+                // First time initialization - copy the initial field value
+                BigDecimal initialValue = context.getCurrentValue(flow, initialField);
+                updateTracking(initialValue);
+                initialized = true;
+                
+                logger.info("RunningWithInitial[{}.{}]: Initialized from {} = {} ", 
+                        flow, fieldName, initialField, initialValue);
+                return initialValue;
+                
+            } else if (initialized && !triggeredField.equals(initialField)) {
+                // Subsequent updates - apply the formula (e.g., subtract allocations)
+                BigDecimal runningValue = getCurrentValue();
+                BigDecimal triggeredValue = context.getCurrentValue(flow, triggeredField);
+                
+                // Apply the formula from parent class
+                BigDecimal result = formula.apply(runningValue, triggeredValue);
+                updateTracking(result);
+                
+                logger.info("RunningWithInitial[{}.{}]: {} operation {} = {} (triggered by {})",
+                        flow, fieldName, runningValue, triggeredValue, result, triggeredField);
+                return result;
+                
+            } else {
+                // Either: initial field triggered but already initialized, 
+                // OR: some other field that shouldn't trigger this
+                logger.debug("RunningWithInitial[{}.{}]: No action for trigger {} (initialized={})", 
+                        flow, fieldName, triggeredField, initialized);
+                return getCurrentValue();
+            }
+        }
+
+        @Override
+        public ReserveCalcStep copy() {
+            RunningWithInitialStep copy = new RunningWithInitialStep(
+                    this.fieldName,
+                    this.initialField,
+                    new ArrayList<>(this.triggerFields),
+                    this.selfDriven,
+                    this.formula
+            );
+            copy.flow = this.flow;
+            copy.originalValue = this.originalValue;
+            copy.previousValue = this.previousValue;
+            copy.currentValue = this.currentValue;
+            copy.initialized = this.initialized; // Copy the initialization state
+            return copy;
+        }
+
+        // Helper method to check if this step has been initialized
+        public boolean isInitialized() {
+            return initialized;
+        }
+
+        // Helper method to get the initial field
+        public ReserveField getInitialField() {
+            return initialField;
+        }
+    }
+    
+    
     // 4. StatefulCalculationStep - For calculations that need previous state
     public static class StatefulCalculationStep extends ReserveCalcStep {
         private final Function<Map<ReserveField, BigDecimal>, BigDecimal> formula;
