@@ -71,9 +71,9 @@ public class InitialValueWrapper {
 		if (value == null) {
 			return BigDecimal.ZERO;
 		}
-		if (value.compareTo(BigDecimal.ZERO) < 0) {
-			throw new IllegalArgumentException("Negative value not allowed: " + value);
-		}
+//		if (value.compareTo(BigDecimal.ZERO) < 0) {
+//			throw new IllegalArgumentException("Negative value not allowed: " + value);
+//		}
 		return value;
 	}
 

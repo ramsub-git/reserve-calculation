@@ -334,9 +334,16 @@ public class ReserveCalculationEngine {
 		// INITAFS with flow-specific logic
 		engine.addStep(INITAFS, new Steps.CalculationStep(INITAFS, List.of(ONHAND, ROHM, LOST, OOBADJ), inputs -> {
 			// Non-JEI: ONHAND - ROHM - LOST - MAX(OOBADJ, 0) then max(ZERO)
-			BigDecimal result = inputs.get(ONHAND).subtract(inputs.get(ROHM)).subtract(inputs.get(LOST))
-					.subtract(inputs.get(OOBADJ).max(BigDecimal.ZERO));
-			return result.max(BigDecimal.ZERO);
+			BigDecimal result = BigDecimal.ZERO;
+			BigDecimal onHand = inputs.get(ONHAND);
+			BigDecimal rohm = inputs.get(ROHM);
+			BigDecimal lost = inputs.get(LOST);
+			BigDecimal oob = inputs.get(OOBADJ);
+			BigDecimal oobA = oob.max(BigDecimal.ZERO);
+			result = onHand.subtract(rohm);
+			result = result.subtract(lost);
+			result = result.subtract(oobA);
+			return result;
 		}, null, null, null, null),
 				Map.of(CalculationFlow.JEI, new Steps.CalculationStep(INITAFS, List.of(ONHAND, LOST), inputs -> {
 					// JEI: ONHAND - LOST
@@ -397,9 +404,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(DOTHRY);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(DOTHRYA, new Steps.CalculationStep(DOTHRYA, List.of(DOTHRY, DOTHRYX),
-				inputs -> inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(DOTHRYX) : inputs.get(DOTHRY),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(DOTHRYZ, new Steps.CalculationStep(DOTHRYZ, List.of(DOTHRY, DOTHRYX, RUNNING_AFS), inputs -> {
 			BigDecimal result = BigDecimal.ZERO;
 			BigDecimal dotHRY = inputs.get(DOTHRY);
@@ -416,6 +420,9 @@ public class ReserveCalculationEngine {
 			return result;
 
 		}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(DOTHRYA, new Steps.CalculationStep(DOTHRYA, List.of(DOTHRY, DOTHRYX),
+				inputs -> inputs.get(DOTHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(DOTHRYX) : inputs.get(DOTHRY),
+				null, null, null, null), Map.of(), null, false);
 
 		engine.addStep(DOTHRN, new Steps.SkulocFieldStep(DOTHRN), Map.of(), null, false);
 		engine.addStep(DOTHRNX, new Steps.CalculationStep(DOTHRNX, List.of(RUNNING_AFS, DOTHRN), inputs -> {
@@ -423,9 +430,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(DOTHRN);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(DOTHRNA, new Steps.CalculationStep(DOTHRNA, List.of(DOTHRN, DOTHRNX),
-				inputs -> inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(DOTHRNX) : inputs.get(DOTHRN),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(DOTHRNZ, new Steps.CalculationStep(DOTHRNZ, List.of(DOTHRN, DOTHRNX, RUNNING_AFS), inputs -> {
 			BigDecimal result = BigDecimal.ZERO;
 			BigDecimal dotHRN = inputs.get(DOTHRN);
@@ -442,6 +446,9 @@ public class ReserveCalculationEngine {
 			return result;
 
 		}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(DOTHRNA, new Steps.CalculationStep(DOTHRNA, List.of(DOTHRN, DOTHRNX),
+				inputs -> inputs.get(DOTHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(DOTHRNX) : inputs.get(DOTHRN),
+				null, null, null, null), Map.of(), null, false);
 
 		engine.addStep(RETHRY, new Steps.SkulocFieldStep(RETHRY), Map.of(), null, false);
 		engine.addStep(RETHRYX, new Steps.CalculationStep(RETHRYX, List.of(RUNNING_AFS, RETHRY), inputs -> {
@@ -449,9 +456,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(RETHRY);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(RETHRYA, new Steps.CalculationStep(RETHRYA, List.of(RETHRY, RETHRYX),
-				inputs -> inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(RETHRYX) : inputs.get(RETHRY),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(RETHRYZ,
 				new Steps.CalculationStep(RETHRYZ, List.of(RETHRY, RETHRYX, RETHRYA, RUNNING_AFS), inputs -> {
 					BigDecimal result = BigDecimal.ZERO;
@@ -469,6 +473,9 @@ public class ReserveCalculationEngine {
 					return result;
 
 				}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(RETHRYA, new Steps.CalculationStep(RETHRYA, List.of(RETHRY, RETHRYX),
+				inputs -> inputs.get(RETHRYX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(RETHRYX) : inputs.get(RETHRY),
+				null, null, null, null), Map.of(), null, false);
 
 		engine.addStep(RETHRN, new Steps.SkulocFieldStep(RETHRN), Map.of(), null, false);
 		engine.addStep(RETHRNX, new Steps.CalculationStep(RETHRNX, List.of(RUNNING_AFS, RETHRN), inputs -> {
@@ -476,14 +483,11 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(RETHRN);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(RETHRNA, new Steps.CalculationStep(RETHRNA, List.of(RETHRN, RETHRNX),
-				inputs -> inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(RETHRNX) : inputs.get(RETHRN),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(RETHRNZ,
 				new Steps.CalculationStep(RETHRNZ, List.of(RETHRN, RETHRNX, RETHRNA, RUNNING_AFS), inputs -> {
 					BigDecimal result = BigDecimal.ZERO;
-					BigDecimal retHRN = inputs.get(RETHRY);
-					BigDecimal retHRNX = inputs.get(RETHRYX);
+					BigDecimal retHRN = inputs.get(RETHRN);
+					BigDecimal retHRNX = inputs.get(RETHRNX);
 					BigDecimal runningAFS = inputs.get(RUNNING_AFS);
 					if (retHRNX.compareTo(BigDecimal.ZERO) > 0) {
 						result = retHRNX;
@@ -496,6 +500,9 @@ public class ReserveCalculationEngine {
 					return result;
 
 				}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(RETHRNA, new Steps.CalculationStep(RETHRNA, List.of(RETHRN, RETHRNX),
+				inputs -> inputs.get(RETHRNX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(RETHRNX) : inputs.get(RETHRN),
+				null, null, null, null), Map.of(), null, false);
 
 		engine.addStep(HLDHR, new Steps.SkulocFieldStep(HLDHR), Map.of(), null, false);
 		engine.addStep(HLDHRX, new Steps.CalculationStep(HLDHRX, List.of(RUNNING_AFS, HLDHR), inputs -> {
@@ -503,9 +510,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(HLDHR);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(HLDHRA, new Steps.CalculationStep(HLDHRA, List.of(HLDHR, HLDHRX),
-				inputs -> inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(HLDHRX) : inputs.get(HLDHR),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(HLDHRZ,
 				new Steps.CalculationStep(HLDHRZ, List.of(HLDHR, HLDHRX, HLDHRA, RUNNING_AFS), inputs -> {
 					BigDecimal result = BigDecimal.ZERO;
@@ -523,6 +527,9 @@ public class ReserveCalculationEngine {
 					return result;
 
 				}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(HLDHRA, new Steps.CalculationStep(HLDHRA, List.of(HLDHR, HLDHRX),
+				inputs -> inputs.get(HLDHRX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(HLDHRX) : inputs.get(HLDHR),
+				null, null, null, null), Map.of(), null, false);
 
 		// Soft Reserve Fields
 		engine.addStep(DOTRSV, new Steps.SkulocFieldStep(DOTRSV), Map.of(), null, false);
@@ -531,9 +538,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(DOTRSV);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(DOTRSVA, new Steps.CalculationStep(DOTRSVA, List.of(DOTRSV, DOTRSVX),
-				inputs -> inputs.get(DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(DOTRSVX) : inputs.get(DOTRSV),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(DOTRSVZ, new Steps.CalculationStep(DOTRSVZ, List.of(DOTRSV, DOTRSVX, RUNNING_AFS), inputs -> {
 			BigDecimal result = BigDecimal.ZERO;
 			BigDecimal dotRSV = inputs.get(DOTRSV);
@@ -550,6 +554,9 @@ public class ReserveCalculationEngine {
 			return result;
 
 		}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(DOTRSVA, new Steps.CalculationStep(DOTRSVA, List.of(DOTRSV, DOTRSVX),
+				inputs -> inputs.get(DOTRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(DOTRSVX) : inputs.get(DOTRSV),
+				null, null, null, null), Map.of(), null, false);
 
 		engine.addStep(RETRSV, new Steps.SkulocFieldStep(RETRSV), Map.of(), null, false);
 		engine.addStep(RETRSVX, new Steps.CalculationStep(RETRSVX, List.of(RUNNING_AFS, RETRSV), inputs -> {
@@ -557,9 +564,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(RETRSV);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(RETRSVA, new Steps.CalculationStep(RETRSVA, List.of(RETRSV, RETRSVX),
-				inputs -> inputs.get(RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(RETRSVX) : inputs.get(RETRSV),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(RETRSVZ,
 				new Steps.CalculationStep(RETRSVZ, List.of(RETRSV, RETRSVX, RETRSVA, RUNNING_AFS), inputs -> {
 					BigDecimal result = BigDecimal.ZERO;
@@ -577,6 +581,9 @@ public class ReserveCalculationEngine {
 					return result;
 
 				}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(RETRSVA, new Steps.CalculationStep(RETRSVA, List.of(RETRSV, RETRSVX),
+				inputs -> inputs.get(RETRSVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(RETRSVX) : inputs.get(RETRSV),
+				null, null, null, null), Map.of(), null, false);
 
 		// Other Input Fields
 		engine.addStep(DOTOUTB, new Steps.SkulocFieldStep(DOTOUTB), Map.of(), null, false);
@@ -600,9 +607,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(AOUTBV);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(AOUTBVA, new Steps.CalculationStep(AOUTBVA, List.of(AOUTBV, AOUTBVX),
-				inputs -> inputs.get(AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(AOUTBVX) : inputs.get(AOUTBV),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(AOUTBVZ, new Steps.CalculationStep(AOUTBVZ, List.of(AOUTBV, AOUTBVX, RUNNING_AFS), inputs -> {
 			BigDecimal result = BigDecimal.ZERO;
 			BigDecimal aOUTBV = inputs.get(AOUTBV);
@@ -619,6 +623,9 @@ public class ReserveCalculationEngine {
 			return result;
 
 		}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(AOUTBVA, new Steps.CalculationStep(AOUTBVA, List.of(AOUTBV, AOUTBVX),
+				inputs -> inputs.get(AOUTBVX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(AOUTBVX) : inputs.get(AOUTBV),
+				null, null, null, null), Map.of(), null, false);
 
 		engine.addStep(NEED, new Steps.SkulocFieldStep(NEED), Map.of(), null, false);
 		engine.addStep(ANEED, new Steps.CalculationStep(ANEED, List.of(NEED, RETAILATS), inputs -> {
@@ -632,9 +639,6 @@ public class ReserveCalculationEngine {
 			BigDecimal requested = inputs.get(ANEED);
 			return available.compareTo(requested) < 0 ? available : BigDecimal.ZERO;
 		}, null, null, null, null), Map.of(), null, false);
-		engine.addStep(NEEDA, new Steps.CalculationStep(NEEDA, List.of(ANEED, NEEDX),
-				inputs -> inputs.get(NEEDX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(NEEDX) : inputs.get(ANEED),
-				null, null, null, null), Map.of(), null, false);
 		engine.addStep(ANEEDZ,
 				new Steps.CalculationStep(ANEEDZ, List.of(NEED, ANEED, NEEDX, NEEDA, RUNNING_AFS), inputs -> {
 					BigDecimal result = BigDecimal.ZERO;
@@ -652,6 +656,9 @@ public class ReserveCalculationEngine {
 					return result;
 
 				}, null, null, null, null), Map.of(), null, false);
+		engine.addStep(NEEDA, new Steps.CalculationStep(NEEDA, List.of(ANEED, NEEDX),
+				inputs -> inputs.get(NEEDX).compareTo(BigDecimal.ZERO) > 0 ? inputs.get(NEEDX) : inputs.get(ANEED),
+				null, null, null, null), Map.of(), null, false);
 		// ===== PHASE 3: RUNNING INVENTORY SETUP =====
 
 		// RUNNING_AFS - Tracks remaining inventory as allocations are made
@@ -738,9 +745,9 @@ public class ReserveCalculationEngine {
 				inputs -> inputs.get(RUNNING_AFS), null, null, null, null), Map.of(), null, false);
 
 		engine.addStep(UNCOMMHR, new Steps.CalculationStep(UNCOMMHR, List.of(DOTHRNZ, RETHRNZ, HLDHRZ), inputs -> {
-			BigDecimal dotNo = inputs.get(DOTHRNA);
-			BigDecimal retNo = inputs.get(RETHRNA);
-			BigDecimal held = inputs.get(HLDHRA);
+			BigDecimal dotNo = inputs.get(DOTHRNZ);
+			BigDecimal retNo = inputs.get(RETHRNZ);
+			BigDecimal held = inputs.get(HLDHRZ);
 			return dotNo.add(retNo).add(held);
 		}, null, null, null, null), Map.of(), null, false); // isDynamic = true
 
