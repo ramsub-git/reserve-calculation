@@ -28,7 +28,7 @@ public class ReserveCalculationController {
 	}
 
 	@PostMapping("/calculate/map")
-	public Map<ReserveField, ReserveCalcStep> calculateFromMap(@RequestBody Map<String, Object> fieldValues) {
+	public Map<String, BigDecimal> calculateFromMap(@RequestBody Map<String, Object> fieldValues) {
 		ReserveCalculationEngine engine = new ReserveCalculationEngine();
 		ReserveCalculationEngine.setupReserveCalculationSteps(engine);
 		ReserveCalcContext context = new ReserveCalcContext();
@@ -37,7 +37,19 @@ public class ReserveCalculationController {
 		context.setInitialValueWrapper(initialValueWrapper);
 
 		engine.calculate(context);
-		return context.getAll(CalculationFlow.OMS);
+		Map<String, BigDecimal> result = new LinkedHashMap<>();
+
+		// Map the requested field names to their enum values
+		result.put("DOTCOMATS", context.get(ReserveField.DOTATS));
+		result.put("RETAILATS", context.get(ReserveField.RETAILATS));
+		result.put("UNCOMMIT", context.get(ReserveField.UNCOMMIT));
+		result.put("COMMITTED", context.get(ReserveField.COMMITTED));
+		result.put("UNCOMMHR", context.get(ReserveField.UNCOMMHR));
+		result.put("OMSSUP", context.get(ReserveField.OMSSUP));
+		result.put("RETFINAL", context.get(ReserveField.RETFINAL));
+		result.put("OMSFINAL", context.get(ReserveField.OMSFINAL));
+
+		return result;
 	}
 
 	@GetMapping("/test")
@@ -144,7 +156,7 @@ public class ReserveCalculationController {
 
 	// Helper method to add constraint information
 	private void addConstraintInfo(Map<String, Map<String, BigDecimal>> constraints, String fieldName,
-			ReserveCalcContext context) {
+								   ReserveCalcContext context) {
 		try {
 			ReserveField baseField = ReserveField.valueOf(fieldName);
 			ReserveField constraintField = ReserveField.valueOf(fieldName + "X");
