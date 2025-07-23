@@ -9,7 +9,7 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class ReserveCalcStep {
+public abstract class ReserveCalcStep<T> {
 
     protected static final Logger logger = LoggerFactory.getLogger(ReserveCalcStep.class);
 
